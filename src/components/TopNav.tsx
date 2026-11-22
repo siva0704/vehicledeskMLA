@@ -28,12 +28,27 @@ export const TopNav: React.FC<TopNavProps> = ({
   onSelectTab,
   onOpenProfile,
 }) => {
-  const { currentUser, language, setLanguage, logout, trips } = useStore();
+  const { currentUser, language, setLanguage, logout, trips, drivers, vehicles } = useStore();
   const t = translations[language];
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const isAdminView = currentRoute.startsWith('/admin') || currentUser?.role === 'ADMIN';
   const isDriverView = currentRoute.startsWith('/driver') || currentUser?.role === 'DRIVER';
+
+  const myDriver = isDriverView
+    ? drivers.find((d) => d.id === currentUser?.driverId) ||
+      drivers.find((d) => d.phone === currentUser?.phone) ||
+      drivers[0]
+    : null;
+  const myVehicle = myDriver ? vehicles.find((v) => v.id === myDriver.vehicleId) : null;
+  const driverInitials = currentUser?.name
+    ? currentUser.name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((n) => n[0].toUpperCase())
+        .join('')
+    : 'CH';
 
   const activeTripsCount = trips.filter(
     (tr) => tr.status !== 'COMPLETED' && tr.status !== 'CANCELLED'
@@ -148,40 +163,53 @@ export const TopNav: React.FC<TopNavProps> = ({
 
             {/* User Profile & Direct Action Button */}
             {currentUser ? (
-              <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200">
+              <div className="flex items-center gap-2 pl-1.5 border-l border-slate-200">
                 {isDriverView ? (
+                  /* Apple Chauffeur Avatar Button */
                   <button
                     onClick={() => {
                       if (onOpenProfile) onOpenProfile();
                       else onNavigate('/driver/profile');
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold transition-all shadow-xs active:scale-95"
-                    title="View Chauffeur Profile"
+                    className="flex items-center gap-2 p-1 pr-3 rounded-full bg-slate-900 hover:bg-slate-850 text-white border border-slate-800 shadow-sm active:scale-95 transition-all group"
+                    title="Chauffeur ID Pass & Profile"
                   >
-                    <User className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Profile</span>
+                    <div className="relative w-7 h-7 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 font-bold text-xs flex items-center justify-center ring-2 ring-amber-400/50 shadow-xs shrink-0">
+                      <span>{driverInitials}</span>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-slate-900 animate-pulse" />
+                    </div>
+                    <div className="text-left hidden xs:block">
+                      <span className="text-[11.5px] font-semibold text-slate-100 block leading-tight group-hover:text-amber-300 transition-colors">
+                        {currentUser.name}
+                      </span>
+                      <span className="text-[9.5px] text-slate-400 font-mono tracking-tight block leading-none">
+                        {myVehicle?.plateNumber || 'Chauffeur Pass'}
+                      </span>
+                    </div>
                   </button>
-                ) : null}
+                ) : (
+                  <>
+                    <div className="hidden sm:block text-right pr-1">
+                      <div className="text-[12px] font-semibold text-slate-900 leading-tight">
+                        {currentUser.name}
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono tracking-tight font-medium">
+                        {currentUser.role}
+                      </div>
+                    </div>
 
-                <div className="hidden sm:block text-right pr-1">
-                  <div className="text-[12px] font-semibold text-slate-900 leading-tight">
-                    {currentUser.name}
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-mono tracking-tight font-medium">
-                    {currentUser.role}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    logout();
-                    onNavigate('/');
-                  }}
-                  title="Sign out of system"
-                  className="p-1.5 rounded-full text-slate-500 hover:text-red-600 hover:bg-red-50/80 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                    <button
+                      onClick={() => {
+                        logout();
+                        onNavigate('/');
+                      }}
+                      title="Sign out of system"
+                      className="p-1.5 rounded-full text-slate-500 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
             ) : null}
           </div>

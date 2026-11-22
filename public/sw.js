@@ -6,6 +6,8 @@ const ASSETS_TO_CACHE = [
   '/manifest.webmanifest',
   '/assets/vehicle-desk-emblem.svg',
   '/assets/logo.png',
+  '/assets/icon-192.png',
+  '/assets/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

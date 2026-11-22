@@ -19,6 +19,7 @@ import {
   Share,
   PlusSquare,
   X,
+  LogOut,
 } from 'lucide-react';
 
 interface DriverProfileProps {
@@ -31,7 +32,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export const DriverProfile: React.FC<DriverProfileProps> = ({ onBackToCockpit }) => {
-  const { currentUser, drivers, vehicles, trips } = useStore();
+  const { currentUser, drivers, vehicles, trips, logout } = useStore();
 
   const myDriver =
     drivers.find((d) => d.id === currentUser?.driverId) ||
@@ -347,6 +348,37 @@ export const DriverProfile: React.FC<DriverProfileProps> = ({ onBackToCockpit })
                 <span>Install on Mobile</span>
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Apple Chauffeur Session & Relocated Sign Out Card */}
+        <div className="apple-card p-5 bg-gradient-to-r from-rose-50/70 to-slate-50 border border-rose-200/80 rounded-3xl space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-rose-950 tracking-tight">
+                  Chauffeur Protocol Session
+                </span>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                  Secure Clearance Active
+                </span>
+              </div>
+              <p className="text-[11px] text-rose-700/80 mt-0.5">
+                Authenticated as <span className="font-semibold text-rose-900">{myDriver.name}</span> with protocol access to {myVehicle?.plateNumber || 'Fleet Vehicle'}.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                logout();
+                window.location.hash = '#/';
+              }}
+              className="apple-btn-secondary bg-white hover:bg-rose-600 text-rose-700 hover:text-white border-rose-300 py-2.5 px-4 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs active:scale-95 shrink-0"
+              title="Sign out of Driver Cockpit"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out Chauffeur Session</span>
+            </button>
           </div>
         </div>
       </div>
