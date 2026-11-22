@@ -244,9 +244,17 @@ export class VehicleDeskStore {
   private state: ServerState;
 
   constructor(filePath?: string) {
+    const isServerless = Boolean(
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.NOW_REGION ||
+      process.env.LAMBDA_TASK_ROOT
+    );
     this.filePath =
       filePath ||
-      path.resolve(process.cwd(), 'data', 'vehicle-desk-state.json');
+      (isServerless
+        ? path.resolve('/tmp', 'vehicle-desk-state.json')
+        : path.resolve(process.cwd(), 'data', 'vehicle-desk-state.json'));
     this.state = this.loadState();
   }
 
