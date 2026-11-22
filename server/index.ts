@@ -178,6 +178,23 @@ app.get('/api/audit', (_req, res) => {
   res.json(store.getAuditLogs());
 });
 
+// Resilient state reconciliation for serverless environments
+app.post('/api/state/sync', (req, res) => {
+  try {
+    const { trips } = req.body;
+    if (Array.isArray(trips) && trips.length > 0) {
+      store.syncTrips(trips);
+    }
+    res.json({
+      ok: true,
+      trips: store.getTrips().length,
+      drivers: store.getDrivers().length,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Driver actions
 app.post('/api/driver/:driverId/status', (req, res) => {
   const { status } = req.body as { status: DriverStatus };
@@ -312,9 +329,14 @@ app.post('/api/driver/trip/:tripId/complete', async (req, res) => {
   }
 
   if (trip.assignedDriverId) {
+    const drv = store.findDriverById(trip.assignedDriverId);
     store.updateDriver(trip.assignedDriverId, {
       status: 'AVAILABLE',
       cleanliness: postTripCleanliness || 'CLEAN',
+      tripsToday: (drv?.tripsToday || 0) + 1,
+      tripsThisWeek: (drv?.tripsThisWeek || 0) + 1,
+      totalHoursThisWeek: Math.round(((drv?.totalHoursThisWeek || 0) + 1.5) * 10) / 10,
+      lastActive: 'Tour completed just now',
     });
   }
 

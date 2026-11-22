@@ -127,8 +127,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  // Fairness metrics
-  const totalWeeklyTrips = drivers.reduce((acc, d) => acc + d.tripsThisWeek, 0);
+  // Dynamically compute chauffeur workload metrics from trips to ensure live accuracy
+  const getDriverWorkload = (driverId: string) => {
+    const drv = drivers.find((d) => d.id === driverId);
+    const driverTrips = trips.filter((t) => t.assignedDriverId === driverId);
+    const completedTrips = driverTrips.filter((t) => t.status === 'COMPLETED');
+    const activeTrips = driverTrips.filter((t) =>
+      ['ASSIGNED', 'ACCEPTED', 'KEY_COLLECTED', 'EN_ROUTE_TO_PICKUP', 'ARRIVED_AT_PICKUP', 'TRIP_STARTED', 'GPS_SHARED', 'IN_PROGRESS'].includes(t.status)
+    );
+    const tripsToday = Math.max(drv?.tripsToday || 0, completedTrips.length + activeTrips.length);
+    const tripsThisWeek = Math.max(drv?.tripsThisWeek || 0, completedTrips.length + activeTrips.length);
+    const totalHours = Math.round(((drv?.totalHoursThisWeek || 0) + (completedTrips.length * 1.5)) * 10) / 10;
+    return { tripsToday, tripsThisWeek, totalHours, hasActiveTour: activeTrips.length > 0, activeTrip: activeTrips[0] || null };
+  };
+
+  // Fairness metrics computed dynamically
+  const totalWeeklyTrips = drivers.reduce((acc, d) => acc + getDriverWorkload(d.id).tripsThisWeek, 0);
   const avgTripsPerDriver = drivers.length > 0 ? (totalWeeklyTrips / drivers.length).toFixed(1) : '0';
 
   return (
@@ -243,9 +257,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
               {sortedVehicles.map((veh) => {
                 const drv = drivers.find((d) => d.vehicleId === veh.id);
-                const isBusy = drv?.status === 'BUSY';
+                const wl = drv ? getDriverWorkload(drv.id) : null;
+                const isBusy = drv?.status === 'BUSY' || (wl?.hasActiveTour ?? false);
                 const isClean = drv?.cleanliness === 'CLEAN';
-                const isAvail = drv?.status === 'AVAILABLE' && isClean;
+                const isAvail = !isBusy && isClean && drv?.status !== 'OFF_DUTY';
                 const isFocused = focusedDriverId === drv?.id;
 
                 const bgStatus = isBusy
@@ -628,7 +643,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             )}
                           </td>
                           <td className="py-3.5 px-4 text-right font-mono-nums font-bold text-slate-900">
-                            {drv.tripsToday} / {drv.tripsThisWeek}
+                            {getDriverWorkload(drv.id).tripsToday} / {getDriverWorkload(drv.id).tripsThisWeek}
                           </td>
                         </tr>
                       );
@@ -685,7 +700,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <tbody className="divide-y divide-black/[0.04]">
                   {drivers.map((d) => {
                     const veh = vehicleMap.get(d.vehicleId);
-                    const diff = d.tripsThisWeek - parseFloat(avgTripsPerDriver);
+                    const wl = getDriverWorkload(d.id);
+                    const diff = wl.tripsThisWeek - parseFloat(avgTripsPerDriver);
                     let balanceStatus = 'Equitable';
                     let balanceColor = 'text-emerald-800 bg-emerald-50 border-emerald-200';
 
@@ -704,13 +720,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           {veh?.model} ({veh?.plate})
                         </td>
                         <td className="py-3.5 px-4 text-center font-mono-nums font-bold text-slate-950">
-                          {d.tripsToday}
+                          {wl.tripsToday}
                         </td>
                         <td className="py-3.5 px-4 text-center font-mono-nums font-bold text-slate-950">
-                          {d.tripsThisWeek}
+                          {wl.tripsThisWeek}
                         </td>
                         <td className="py-3.5 px-4 text-center font-mono-nums text-slate-600">
-                          {d.totalHoursThisWeek}h
+                          {wl.totalHours}h
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="text-[11px] font-medium text-slate-700">

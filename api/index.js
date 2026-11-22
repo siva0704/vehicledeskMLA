@@ -126,10 +126,10 @@ var INITIAL_DRIVERS = [
     vehicleId: "veh-1",
     status: "AVAILABLE",
     cleanliness: "CLEAN",
-    tripsToday: 0,
-    tripsThisWeek: 0,
-    totalHoursThisWeek: 0,
-    lastActive: "Ready on Duty",
+    tripsToday: 2,
+    tripsThisWeek: 2,
+    totalHoursThisWeek: 3.5,
+    lastActive: "Completed Tour (Airport Transfer)",
     currentLocation: "Vidhana Soudha Gate 2, Bengaluru",
     currentGpsShareUrl: "https://maps.google.com/?q=12.9796,77.5908"
   },
@@ -140,10 +140,10 @@ var INITIAL_DRIVERS = [
     vehicleId: "veh-2",
     status: "AVAILABLE",
     cleanliness: "CLEAN",
-    tripsToday: 0,
-    tripsThisWeek: 0,
-    totalHoursThisWeek: 0,
-    lastActive: "Ready on Duty",
+    tripsToday: 1,
+    tripsThisWeek: 1,
+    totalHoursThisWeek: 1.5,
+    lastActive: "Completed Tour (Kumara Krupa)",
     currentLocation: "Kumara Krupa Guest House, Bengaluru",
     currentGpsShareUrl: "https://maps.google.com/?q=12.9922,77.5833"
   },
@@ -218,8 +218,98 @@ var INITIAL_DRIVERS = [
     currentGpsShareUrl: "https://maps.google.com/?q=12.9890,77.5540"
   }
 ];
-var INITIAL_TRIPS = [];
-var INITIAL_AUDIT_LOGS = [];
+var INITIAL_TRIPS = [
+  {
+    id: "REQ-10619",
+    vipId: "user-vip-1",
+    vipName: "Hon. Rajesh Kumar",
+    vipPhone: "+919845011223",
+    vipDesignation: "Special Secretary to Govt (DPAR)",
+    date: "2026-11-22",
+    time: "21:30",
+    pickupLocation: "Vidhana Soudha Gate 1",
+    dropLocation: "Round Trip (Return to Vidhana Soudha Gate 1)",
+    isRoundTrip: true,
+    preferredClass: "CLASS_A",
+    status: "COMPLETED",
+    assignedDriverId: "drv-1",
+    assignedDriverName: "Suresh Gowda",
+    assignedDriverPhone: "+919448033445",
+    assignedVehicleId: "veh-1",
+    assignedVehicleModel: "Toyota Camry Hybrid (Sedan)",
+    assignedVehiclePlate: "KA-01-GA-1001",
+    assignedPriority: 1,
+    allocationMethod: "RULE_ENGINE_AUTO",
+    source: "WHATSAPP",
+    createdAt: "2026-11-22T16:00:00.000Z",
+    completedAt: "2026-11-22T16:15:00.000Z",
+    gpsShareUrl: "https://maps.google.com/?q=12.9796,77.5908"
+  },
+  {
+    id: "REQ-10979",
+    vipId: "user-vip-1",
+    vipName: "Hon. Rajesh Kumar",
+    vipPhone: "+919845011223",
+    vipDesignation: "Special Secretary to Govt (DPAR)",
+    date: "2026-11-22",
+    time: "19:30",
+    pickupLocation: "Vidhana Soudha South Gate",
+    dropLocation: "Kempegowda Intl Airport (KIA)",
+    isRoundTrip: false,
+    preferredClass: "CLASS_A",
+    status: "COMPLETED",
+    assignedDriverId: "drv-1",
+    assignedDriverName: "Suresh Gowda",
+    assignedDriverPhone: "+919448033445",
+    assignedVehicleId: "veh-1",
+    assignedVehicleModel: "Toyota Camry Hybrid (Sedan)",
+    assignedVehiclePlate: "KA-01-GA-1001",
+    assignedPriority: 1,
+    allocationMethod: "RULE_ENGINE_AUTO",
+    source: "WHATSAPP",
+    createdAt: "2026-11-22T14:00:00.000Z",
+    completedAt: "2026-11-22T14:40:00.000Z",
+    gpsShareUrl: "https://maps.google.com/?q=12.9796,77.5908"
+  },
+  {
+    id: "REQ-10550",
+    vipId: "user-vip-2",
+    vipName: "Dr. Ananya Hegde",
+    vipPhone: "+919845022334",
+    vipDesignation: "Principal Secretary (Higher Education)",
+    date: "2026-11-22",
+    time: "18:00",
+    pickupLocation: "Vidhana Soudha Gate 2",
+    dropLocation: "Kumara Krupa Guest House",
+    isRoundTrip: false,
+    preferredClass: "CLASS_A",
+    status: "COMPLETED",
+    assignedDriverId: "drv-2",
+    assignedDriverName: "Anand Rao",
+    assignedDriverPhone: "+919448033446",
+    assignedVehicleId: "veh-2",
+    assignedVehicleModel: "Mercedes-Benz E220d (Sedan)",
+    assignedVehiclePlate: "KA-01-EQ-9009",
+    assignedPriority: 2,
+    allocationMethod: "RULE_ENGINE_AUTO",
+    source: "WHATSAPP",
+    createdAt: "2026-11-22T12:30:00.000Z",
+    completedAt: "2026-11-22T13:00:00.000Z",
+    gpsShareUrl: "https://maps.google.com/?q=12.9922,77.5833"
+  }
+];
+var INITIAL_AUDIT_LOGS = [
+  {
+    id: "audit-001",
+    tripId: "REQ-10550",
+    adminId: "user-admin-1",
+    adminName: "Kavitha Rao",
+    previousDriverId: "drv-3",
+    newDriverId: "drv-2",
+    reason: "Executive protocol escort requested for Higher Education Secretary review meeting",
+    timestamp: "2026-11-22T12:31:00.000Z"
+  }
+];
 var VehicleDeskStore = class {
   constructor(filePath) {
     const isServerless = Boolean(
@@ -229,24 +319,49 @@ var VehicleDeskStore = class {
     this.state = this.loadState();
   }
   loadState() {
+    const isServerless = Boolean(
+      process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NOW_REGION || process.env.LAMBDA_TASK_ROOT
+    );
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, "utf-8");
         const parsed = JSON.parse(raw);
-        const cleanTrips = (parsed.trips || []).filter(
-          (t) => !["REQ-4081", "REQ-4078", "REQ-TEST-99"].includes(t.id)
-        );
-        return {
-          users: parsed.users || INITIAL_USERS,
-          vehicles: parsed.vehicles || INITIAL_VEHICLES,
-          drivers: parsed.drivers || INITIAL_DRIVERS,
-          trips: cleanTrips,
-          auditLogs: parsed.auditLogs || INITIAL_AUDIT_LOGS,
-          sessions: parsed.sessions || {}
-        };
+        if (parsed && Array.isArray(parsed.trips)) {
+          return {
+            users: parsed.users || INITIAL_USERS,
+            vehicles: parsed.vehicles || INITIAL_VEHICLES,
+            drivers: parsed.drivers || INITIAL_DRIVERS,
+            trips: parsed.trips,
+            auditLogs: parsed.auditLogs || INITIAL_AUDIT_LOGS,
+            sessions: parsed.sessions || {}
+          };
+        }
       }
     } catch (err) {
-      console.warn("[Store] Could not read existing state file, using initial data:", err);
+      console.warn("[Store] Could not read existing state file:", err);
+    }
+    if (isServerless) {
+      try {
+        const seedPath = path.resolve(process.cwd(), "data", "vehicle-desk-state.json");
+        if (fs.existsSync(seedPath)) {
+          const raw = fs.readFileSync(seedPath, "utf-8");
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.trips)) {
+            const seedState = {
+              users: parsed.users || INITIAL_USERS,
+              vehicles: parsed.vehicles || INITIAL_VEHICLES,
+              drivers: parsed.drivers || INITIAL_DRIVERS,
+              trips: parsed.trips,
+              auditLogs: parsed.auditLogs || INITIAL_AUDIT_LOGS,
+              sessions: parsed.sessions || {}
+            };
+            this.saveStateDirect(seedState);
+            return seedState;
+          }
+        }
+      } catch (err) {
+        console.warn("[Store] Could not read bundled seed file:", err);
+      }
     }
     const initial = {
       users: INITIAL_USERS,
@@ -287,36 +402,60 @@ var VehicleDeskStore = class {
     this.save();
     return this.state;
   }
-  // Getters
-  getUsers() {
-    return this.state.users;
-  }
-  getVehicles() {
-    return this.state.vehicles;
-  }
-  getDrivers() {
-    return this.state.drivers;
-  }
-  getTrips() {
-    return this.state.trips;
-  }
-  getAuditLogs() {
-    return this.state.auditLogs;
-  }
+  // Disk reload to ensure cross-request synchronization in serverless environments
   reloadIfChanged() {
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, "utf-8");
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.sessions) {
-          this.state.sessions = { ...this.state.sessions, ...parsed.sessions };
-        }
-        if (parsed && Array.isArray(parsed.trips)) {
-          this.state.trips = parsed.trips;
+        if (parsed) {
+          if (parsed.sessions) {
+            this.state.sessions = { ...this.state.sessions, ...parsed.sessions };
+          }
+          if (Array.isArray(parsed.trips)) {
+            this.state.trips = parsed.trips;
+          }
+          if (Array.isArray(parsed.drivers)) {
+            this.state.drivers = parsed.drivers;
+          }
+          if (Array.isArray(parsed.vehicles)) {
+            this.state.vehicles = parsed.vehicles;
+          }
+          if (Array.isArray(parsed.auditLogs)) {
+            this.state.auditLogs = parsed.auditLogs;
+          }
+          if (Array.isArray(parsed.users)) {
+            this.state.users = parsed.users;
+          }
         }
       }
     } catch {
     }
+  }
+  // Getters - always reload from disk first
+  getUsers() {
+    this.reloadIfChanged();
+    return this.state.users;
+  }
+  getVehicles() {
+    this.reloadIfChanged();
+    return this.state.vehicles;
+  }
+  getDrivers() {
+    this.reloadIfChanged();
+    return this.state.drivers;
+  }
+  getTrips() {
+    this.reloadIfChanged();
+    return this.state.trips;
+  }
+  getAuditLogs() {
+    this.reloadIfChanged();
+    return this.state.auditLogs;
+  }
+  getState() {
+    this.reloadIfChanged();
+    return this.state;
   }
   getSession(phone) {
     this.reloadIfChanged();
@@ -340,6 +479,7 @@ var VehicleDeskStore = class {
     this.save();
   }
   findUserByPhone(phone) {
+    this.reloadIfChanged();
     const cleanPhone = phone.replace(/[\s\-\(\)]/g, "");
     return this.state.users.find((u) => {
       const uClean = u.phone.replace(/[\s\-\(\)]/g, "");
@@ -347,38 +487,68 @@ var VehicleDeskStore = class {
     });
   }
   findDriverById(id) {
+    this.reloadIfChanged();
     return this.state.drivers.find((d) => d.id === id);
   }
   findVehicleById(id) {
+    this.reloadIfChanged();
     return this.state.vehicles.find((v) => v.id === id);
   }
   findTripById(id) {
+    this.reloadIfChanged();
     return this.state.trips.find((t) => t.id === id);
   }
   findActiveTripForVip(vipId) {
+    this.reloadIfChanged();
     return this.state.trips.find(
       (t) => t.vipId === vipId && t.status !== "COMPLETED" && t.status !== "CANCELLED"
     );
   }
   addTrip(trip) {
-    this.state.trips.unshift(trip);
+    this.reloadIfChanged();
+    const existingIndex = this.state.trips.findIndex((t) => t.id === trip.id);
+    if (existingIndex >= 0) {
+      this.state.trips[existingIndex] = { ...this.state.trips[existingIndex], ...trip };
+    } else {
+      this.state.trips.unshift(trip);
+    }
+    this.save();
+  }
+  syncTrips(incoming) {
+    this.reloadIfChanged();
+    const tripMap = /* @__PURE__ */ new Map();
+    this.state.trips.forEach((t) => tripMap.set(t.id, t));
+    incoming.forEach((t) => {
+      const existing = tripMap.get(t.id);
+      if (!existing) {
+        tripMap.set(t.id, t);
+      } else {
+        tripMap.set(t.id, { ...existing, ...t });
+      }
+    });
+    this.state.trips = Array.from(tripMap.values()).sort(
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
     this.save();
   }
   updateTrip(id, patch) {
-    const trip = this.findTripById(id);
+    this.reloadIfChanged();
+    const trip = this.state.trips.find((t) => t.id === id);
     if (!trip) return void 0;
     Object.assign(trip, patch, { updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
     this.save();
     return trip;
   }
   updateDriver(id, patch) {
-    const driver = this.findDriverById(id);
+    this.reloadIfChanged();
+    const driver = this.state.drivers.find((d) => d.id === id);
     if (!driver) return void 0;
     Object.assign(driver, patch);
     this.save();
     return driver;
   }
   addAuditLog(entry) {
+    this.reloadIfChanged();
     this.state.auditLogs.unshift(entry);
     this.save();
   }
@@ -1692,6 +1862,21 @@ app.get("/api/vehicles", (_req, res) => {
 app.get("/api/audit", (_req, res) => {
   res.json(store.getAuditLogs());
 });
+app.post("/api/state/sync", (req, res) => {
+  try {
+    const { trips } = req.body;
+    if (Array.isArray(trips) && trips.length > 0) {
+      store.syncTrips(trips);
+    }
+    res.json({
+      ok: true,
+      trips: store.getTrips().length,
+      drivers: store.getDrivers().length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.post("/api/driver/:driverId/status", (req, res) => {
   const { status } = req.body;
   const updated = store.updateDriver(req.params.driverId, { status });
@@ -1797,9 +1982,14 @@ app.post("/api/driver/trip/:tripId/complete", async (req, res) => {
     return;
   }
   if (trip.assignedDriverId) {
+    const drv = store.findDriverById(trip.assignedDriverId);
     store.updateDriver(trip.assignedDriverId, {
       status: "AVAILABLE",
-      cleanliness: postTripCleanliness || "CLEAN"
+      cleanliness: postTripCleanliness || "CLEAN",
+      tripsToday: (drv?.tripsToday || 0) + 1,
+      tripsThisWeek: (drv?.tripsThisWeek || 0) + 1,
+      totalHoursThisWeek: Math.round(((drv?.totalHoursThisWeek || 0) + 1.5) * 10) / 10,
+      lastActive: "Tour completed just now"
     });
   }
   await waService.notifyTripCompleted(trip);

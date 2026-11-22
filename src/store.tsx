@@ -126,15 +126,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [backendConnected, setBackendConnected] = useState(false);
 
-  // Sync state with backend
+  // Sync state with backend with resilient serverless reconciliation
   const refreshState = async () => {
     try {
       const state = await api.getState();
-      if (Array.isArray(state?.users)) setUsers(state.users);
-      if (Array.isArray(state?.vehicles)) setVehicles(state.vehicles);
-      if (Array.isArray(state?.drivers)) setDrivers(state.drivers);
-      if (Array.isArray(state?.trips)) setTrips(state.trips);
-      if (Array.isArray(state?.auditLogs)) setAuditLogs(state.auditLogs);
+      if (Array.isArray(state?.users) && state.users.length > 0) setUsers(state.users);
+      if (Array.isArray(state?.vehicles) && state.vehicles.length > 0) setVehicles(state.vehicles);
+      if (Array.isArray(state?.drivers) && state.drivers.length > 0) setDrivers(state.drivers);
+      if (Array.isArray(state?.auditLogs) && state.auditLogs.length > 0) setAuditLogs(state.auditLogs);
+
+      if (Array.isArray(state?.trips)) {
+        setTrips((prevTrips) => {
+          if (state.trips.length > 0) {
+            const tripMap = new Map<string, TripRequest>();
+            // Keep client trips
+            prevTrips.forEach((t) => tripMap.set(t.id, t));
+            // Server updates take precedence
+            state.trips.forEach((t) => tripMap.set(t.id, t));
+            const merged = Array.from(tripMap.values()).sort(
+              (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            );
+            return merged;
+          } else if (prevTrips.length > 0) {
+            // Serverless cold start returned empty trips - re-hydrate the server container
+            api.syncState({ trips: prevTrips }).catch(() => {});
+            return prevTrips;
+          }
+          return prevTrips;
+        });
+      }
       setBackendConnected(true);
     } catch (err) {
       setBackendConnected(false);

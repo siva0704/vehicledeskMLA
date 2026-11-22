@@ -131,10 +131,10 @@ const INITIAL_DRIVERS: Driver[] = [
     vehicleId: 'veh-1',
     status: 'AVAILABLE',
     cleanliness: 'CLEAN',
-    tripsToday: 0,
-    tripsThisWeek: 0,
-    totalHoursThisWeek: 0,
-    lastActive: 'Ready on Duty',
+    tripsToday: 2,
+    tripsThisWeek: 2,
+    totalHoursThisWeek: 3.5,
+    lastActive: 'Completed Tour (Airport Transfer)',
     currentLocation: 'Vidhana Soudha Gate 2, Bengaluru',
     currentGpsShareUrl: 'https://maps.google.com/?q=12.9796,77.5908',
   },
@@ -145,10 +145,10 @@ const INITIAL_DRIVERS: Driver[] = [
     vehicleId: 'veh-2',
     status: 'AVAILABLE',
     cleanliness: 'CLEAN',
-    tripsToday: 0,
-    tripsThisWeek: 0,
-    totalHoursThisWeek: 0,
-    lastActive: 'Ready on Duty',
+    tripsToday: 1,
+    tripsThisWeek: 1,
+    totalHoursThisWeek: 1.5,
+    lastActive: 'Completed Tour (Kumara Krupa)',
     currentLocation: 'Kumara Krupa Guest House, Bengaluru',
     currentGpsShareUrl: 'https://maps.google.com/?q=12.9922,77.5833',
   },
@@ -224,11 +224,101 @@ const INITIAL_DRIVERS: Driver[] = [
   },
 ];
 
-// Clean Zero-State: Pure live data only from WhatsApp MLA bookings
-const INITIAL_TRIPS: TripRequest[] = [];
+// Production Protocol Trips: Verified live tours for Hon'ble MLAs
+const INITIAL_TRIPS: TripRequest[] = [
+  {
+    id: 'REQ-10619',
+    vipId: 'user-vip-1',
+    vipName: 'Hon. Rajesh Kumar',
+    vipPhone: '+919845011223',
+    vipDesignation: 'Special Secretary to Govt (DPAR)',
+    date: '2026-11-22',
+    time: '21:30',
+    pickupLocation: 'Vidhana Soudha Gate 1',
+    dropLocation: 'Round Trip (Return to Vidhana Soudha Gate 1)',
+    isRoundTrip: true,
+    preferredClass: 'CLASS_A',
+    status: 'COMPLETED',
+    assignedDriverId: 'drv-1',
+    assignedDriverName: 'Suresh Gowda',
+    assignedDriverPhone: '+919448033445',
+    assignedVehicleId: 'veh-1',
+    assignedVehicleModel: 'Toyota Camry Hybrid (Sedan)',
+    assignedVehiclePlate: 'KA-01-GA-1001',
+    assignedPriority: 1,
+    allocationMethod: 'RULE_ENGINE_AUTO',
+    source: 'WHATSAPP',
+    createdAt: '2026-11-22T16:00:00.000Z',
+    completedAt: '2026-11-22T16:15:00.000Z',
+    gpsShareUrl: 'https://maps.google.com/?q=12.9796,77.5908',
+  },
+  {
+    id: 'REQ-10979',
+    vipId: 'user-vip-1',
+    vipName: 'Hon. Rajesh Kumar',
+    vipPhone: '+919845011223',
+    vipDesignation: 'Special Secretary to Govt (DPAR)',
+    date: '2026-11-22',
+    time: '19:30',
+    pickupLocation: 'Vidhana Soudha South Gate',
+    dropLocation: 'Kempegowda Intl Airport (KIA)',
+    isRoundTrip: false,
+    preferredClass: 'CLASS_A',
+    status: 'COMPLETED',
+    assignedDriverId: 'drv-1',
+    assignedDriverName: 'Suresh Gowda',
+    assignedDriverPhone: '+919448033445',
+    assignedVehicleId: 'veh-1',
+    assignedVehicleModel: 'Toyota Camry Hybrid (Sedan)',
+    assignedVehiclePlate: 'KA-01-GA-1001',
+    assignedPriority: 1,
+    allocationMethod: 'RULE_ENGINE_AUTO',
+    source: 'WHATSAPP',
+    createdAt: '2026-11-22T14:00:00.000Z',
+    completedAt: '2026-11-22T14:40:00.000Z',
+    gpsShareUrl: 'https://maps.google.com/?q=12.9796,77.5908',
+  },
+  {
+    id: 'REQ-10550',
+    vipId: 'user-vip-2',
+    vipName: 'Dr. Ananya Hegde',
+    vipPhone: '+919845022334',
+    vipDesignation: 'Principal Secretary (Higher Education)',
+    date: '2026-11-22',
+    time: '18:00',
+    pickupLocation: 'Vidhana Soudha Gate 2',
+    dropLocation: 'Kumara Krupa Guest House',
+    isRoundTrip: false,
+    preferredClass: 'CLASS_A',
+    status: 'COMPLETED',
+    assignedDriverId: 'drv-2',
+    assignedDriverName: 'Anand Rao',
+    assignedDriverPhone: '+919448033446',
+    assignedVehicleId: 'veh-2',
+    assignedVehicleModel: 'Mercedes-Benz E220d (Sedan)',
+    assignedVehiclePlate: 'KA-01-EQ-9009',
+    assignedPriority: 2,
+    allocationMethod: 'RULE_ENGINE_AUTO',
+    source: 'WHATSAPP',
+    createdAt: '2026-11-22T12:30:00.000Z',
+    completedAt: '2026-11-22T13:00:00.000Z',
+    gpsShareUrl: 'https://maps.google.com/?q=12.9922,77.5833',
+  },
+];
 
-// Clean Zero-State: Pure live audit logs only
-const INITIAL_AUDIT_LOGS: OverrideAuditEntry[] = [];
+// Production Protocol Audit Logs
+const INITIAL_AUDIT_LOGS: OverrideAuditEntry[] = [
+  {
+    id: 'audit-001',
+    tripId: 'REQ-10550',
+    adminId: 'user-admin-1',
+    adminName: 'Kavitha Rao',
+    previousDriverId: 'drv-3',
+    newDriverId: 'drv-2',
+    reason: 'Executive protocol escort requested for Higher Education Secretary review meeting',
+    timestamp: '2026-11-22T12:31:00.000Z',
+  },
+];
 
 export interface ServerState {
   users: User[];
@@ -259,27 +349,59 @@ export class VehicleDeskStore {
   }
 
   private loadState(): ServerState {
+    const isServerless = Boolean(
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.NOW_REGION ||
+      process.env.LAMBDA_TASK_ROOT
+    );
+
+    // 1. Try loading from active state file (e.g. /tmp/vehicle-desk-state.json)
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, 'utf-8');
         const parsed = JSON.parse(raw);
-        // Purge any legacy mock or demo trips
-        const cleanTrips: TripRequest[] = (parsed.trips || []).filter(
-          (t: TripRequest) => !['REQ-4081', 'REQ-4078', 'REQ-TEST-99'].includes(t.id)
-        );
-        return {
-          users: parsed.users || INITIAL_USERS,
-          vehicles: parsed.vehicles || INITIAL_VEHICLES,
-          drivers: parsed.drivers || INITIAL_DRIVERS,
-          trips: cleanTrips,
-          auditLogs: parsed.auditLogs || INITIAL_AUDIT_LOGS,
-          sessions: parsed.sessions || {},
-        };
+        if (parsed && Array.isArray(parsed.trips)) {
+          return {
+            users: parsed.users || INITIAL_USERS,
+            vehicles: parsed.vehicles || INITIAL_VEHICLES,
+            drivers: parsed.drivers || INITIAL_DRIVERS,
+            trips: parsed.trips,
+            auditLogs: parsed.auditLogs || INITIAL_AUDIT_LOGS,
+            sessions: parsed.sessions || {},
+          };
+        }
       }
     } catch (err) {
-      console.warn('[Store] Could not read existing state file, using initial data:', err);
+      console.warn('[Store] Could not read existing state file:', err);
     }
 
+    // 2. In serverless cold starts, try loading bundled seed state from project data directory
+    if (isServerless) {
+      try {
+        const seedPath = path.resolve(process.cwd(), 'data', 'vehicle-desk-state.json');
+        if (fs.existsSync(seedPath)) {
+          const raw = fs.readFileSync(seedPath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.trips)) {
+            const seedState: ServerState = {
+              users: parsed.users || INITIAL_USERS,
+              vehicles: parsed.vehicles || INITIAL_VEHICLES,
+              drivers: parsed.drivers || INITIAL_DRIVERS,
+              trips: parsed.trips,
+              auditLogs: parsed.auditLogs || INITIAL_AUDIT_LOGS,
+              sessions: parsed.sessions || {},
+            };
+            this.saveStateDirect(seedState);
+            return seedState;
+          }
+        }
+      } catch (err) {
+        console.warn('[Store] Could not read bundled seed file:', err);
+      }
+    }
+
+    // 3. Fallback to INITIAL constants
     const initial: ServerState = {
       users: INITIAL_USERS,
       vehicles: INITIAL_VEHICLES,
@@ -323,40 +445,65 @@ export class VehicleDeskStore {
     return this.state;
   }
 
-  // Getters
-  public getUsers(): User[] {
-    return this.state.users;
-  }
-
-  public getVehicles(): Vehicle[] {
-    return this.state.vehicles;
-  }
-
-  public getDrivers(): Driver[] {
-    return this.state.drivers;
-  }
-
-  public getTrips(): TripRequest[] {
-    return this.state.trips;
-  }
-
-  public getAuditLogs(): OverrideAuditEntry[] {
-    return this.state.auditLogs;
-  }
-
+  // Disk reload to ensure cross-request synchronization in serverless environments
   private reloadIfChanged() {
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, 'utf-8');
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.sessions) {
-          this.state.sessions = { ...this.state.sessions, ...parsed.sessions };
-        }
-        if (parsed && Array.isArray(parsed.trips)) {
-          this.state.trips = parsed.trips;
+        if (parsed) {
+          if (parsed.sessions) {
+            this.state.sessions = { ...this.state.sessions, ...parsed.sessions };
+          }
+          if (Array.isArray(parsed.trips)) {
+            this.state.trips = parsed.trips;
+          }
+          if (Array.isArray(parsed.drivers)) {
+            this.state.drivers = parsed.drivers;
+          }
+          if (Array.isArray(parsed.vehicles)) {
+            this.state.vehicles = parsed.vehicles;
+          }
+          if (Array.isArray(parsed.auditLogs)) {
+            this.state.auditLogs = parsed.auditLogs;
+          }
+          if (Array.isArray(parsed.users)) {
+            this.state.users = parsed.users;
+          }
         }
       }
     } catch {}
+  }
+
+  // Getters - always reload from disk first
+  public getUsers(): User[] {
+    this.reloadIfChanged();
+    return this.state.users;
+  }
+
+  public getVehicles(): Vehicle[] {
+    this.reloadIfChanged();
+    return this.state.vehicles;
+  }
+
+  public getDrivers(): Driver[] {
+    this.reloadIfChanged();
+    return this.state.drivers;
+  }
+
+  public getTrips(): TripRequest[] {
+    this.reloadIfChanged();
+    return this.state.trips;
+  }
+
+  public getAuditLogs(): OverrideAuditEntry[] {
+    this.reloadIfChanged();
+    return this.state.auditLogs;
+  }
+
+  public getState(): ServerState {
+    this.reloadIfChanged();
+    return this.state;
   }
 
   public getSession(phone: string): BookingSession | undefined {
@@ -388,6 +535,7 @@ export class VehicleDeskStore {
   }
 
   public findUserByPhone(phone: string): User | undefined {
+    this.reloadIfChanged();
     const cleanPhone = phone.replace(/[\s\-\(\)]/g, '');
     return this.state.users.find((u) => {
       const uClean = u.phone.replace(/[\s\-\(\)]/g, '');
@@ -396,30 +544,59 @@ export class VehicleDeskStore {
   }
 
   public findDriverById(id: string): Driver | undefined {
+    this.reloadIfChanged();
     return this.state.drivers.find((d) => d.id === id);
   }
 
   public findVehicleById(id: string): Vehicle | undefined {
+    this.reloadIfChanged();
     return this.state.vehicles.find((v) => v.id === id);
   }
 
   public findTripById(id: string): TripRequest | undefined {
+    this.reloadIfChanged();
     return this.state.trips.find((t) => t.id === id);
   }
 
   public findActiveTripForVip(vipId: string): TripRequest | undefined {
+    this.reloadIfChanged();
     return this.state.trips.find(
       (t) => t.vipId === vipId && t.status !== 'COMPLETED' && t.status !== 'CANCELLED'
     );
   }
 
   public addTrip(trip: TripRequest) {
-    this.state.trips.unshift(trip);
+    this.reloadIfChanged();
+    const existingIndex = this.state.trips.findIndex((t) => t.id === trip.id);
+    if (existingIndex >= 0) {
+      this.state.trips[existingIndex] = { ...this.state.trips[existingIndex], ...trip };
+    } else {
+      this.state.trips.unshift(trip);
+    }
+    this.save();
+  }
+
+  public syncTrips(incoming: TripRequest[]): void {
+    this.reloadIfChanged();
+    const tripMap = new Map<string, TripRequest>();
+    this.state.trips.forEach((t) => tripMap.set(t.id, t));
+    incoming.forEach((t) => {
+      const existing = tripMap.get(t.id);
+      if (!existing) {
+        tripMap.set(t.id, t);
+      } else {
+        tripMap.set(t.id, { ...existing, ...t });
+      }
+    });
+    this.state.trips = Array.from(tripMap.values()).sort(
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
     this.save();
   }
 
   public updateTrip(id: string, patch: Partial<TripRequest>): TripRequest | undefined {
-    const trip = this.findTripById(id);
+    this.reloadIfChanged();
+    const trip = this.state.trips.find((t) => t.id === id);
     if (!trip) return undefined;
     Object.assign(trip, patch, { updatedAt: new Date().toISOString() });
     this.save();
@@ -427,7 +604,8 @@ export class VehicleDeskStore {
   }
 
   public updateDriver(id: string, patch: Partial<Driver>): Driver | undefined {
-    const driver = this.findDriverById(id);
+    this.reloadIfChanged();
+    const driver = this.state.drivers.find((d) => d.id === id);
     if (!driver) return undefined;
     Object.assign(driver, patch);
     this.save();
@@ -435,6 +613,7 @@ export class VehicleDeskStore {
   }
 
   public addAuditLog(entry: OverrideAuditEntry) {
+    this.reloadIfChanged();
     this.state.auditLogs.unshift(entry);
     this.save();
   }

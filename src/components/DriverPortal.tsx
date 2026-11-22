@@ -68,6 +68,15 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
       tr.status !== 'CANCELLED'
   );
 
+  const myCompletedCount = trips.filter(
+    (t) => t.assignedDriverId === myDriver?.id && t.status === 'COMPLETED'
+  ).length;
+  const driverTripsToday = Math.max(myDriver?.tripsToday || 0, myCompletedCount);
+  const driverTripsThisWeek = Math.max(myDriver?.tripsThisWeek || 0, myCompletedCount);
+  const driverHoursThisWeek = Math.round(
+    ((myDriver?.totalHoursThisWeek || 0) + (myCompletedCount * 1.5)) * 10
+  ) / 10;
+
   const [gpsModalOpen, setGpsModalOpen] = useState(false);
   const [customGpsUrl, setCustomGpsUrl] = useState(
     myDriver?.currentGpsShareUrl || 'https://maps.google.com/?q=12.9796,77.5908'
@@ -309,7 +318,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                     {t.driver.tripsToday}
                   </span>
                   <span className="font-mono-nums text-xl font-bold text-slate-900 mt-1 block tracking-tight">
-                    {myDriver?.tripsToday || 0}
+                    {driverTripsToday}
                   </span>
                 </div>
                 <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/60">
@@ -317,7 +326,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                     {t.driver.tripsThisWeek}
                   </span>
                   <span className="font-mono-nums text-xl font-bold text-slate-900 mt-1 block tracking-tight">
-                    {myDriver?.tripsThisWeek || 0}
+                    {driverTripsThisWeek}
                   </span>
                 </div>
                 <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200/60">
@@ -325,7 +334,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
                     {t.driver.hoursThisWeek}
                   </span>
                   <span className="font-mono-nums text-xl font-bold text-slate-900 mt-1 block tracking-tight">
-                    {myDriver?.totalHoursThisWeek || 0}h
+                    {driverHoursThisWeek}h
                   </span>
                 </div>
               </div>

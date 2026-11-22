@@ -24,6 +24,19 @@ export const api = {
     return res.json();
   },
 
+  async syncState(data: { trips?: TripRequest[] }): Promise<{ ok: boolean; trips?: number }> {
+    try {
+      const res = await fetch(`${API_BASE}/state/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    } catch {
+      return { ok: false };
+    }
+  },
+
   async login(phone: string, role?: string): Promise<{ user: User }> {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
