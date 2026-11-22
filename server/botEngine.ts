@@ -57,8 +57,54 @@ export class BotEngine {
       return;
     }
 
-    // 2. Active Guided Step-by-Step Session
-    const activeSession = this.store.getSession(fromPhone);
+    // 2. Active Guided Step-by-Step Session or Serverless Self-Healing Transitions
+    let activeSession = this.store.getSession(fromPhone);
+
+    // Self-heal session if lost due to serverless cold start:
+    if (!activeSession) {
+      if (actionId.startsWith('loc_')) {
+        activeSession = {
+          vipId: user.id,
+          phone: fromPhone,
+          step: 'AWAITING_PICKUP',
+          updatedAt: Date.now(),
+        };
+        this.store.setSession(fromPhone, activeSession);
+      } else if (actionId.startsWith('drop_')) {
+        activeSession = {
+          vipId: user.id,
+          phone: fromPhone,
+          pickupLocation: 'Vidhana Soudha Gate 1',
+          step: 'AWAITING_DROP',
+          updatedAt: Date.now(),
+        };
+        this.store.setSession(fromPhone, activeSession);
+      } else if (actionId.startsWith('time_')) {
+        activeSession = {
+          vipId: user.id,
+          phone: fromPhone,
+          pickupLocation: 'Vidhana Soudha Gate 1',
+          dropLocation: 'Kempegowda Intl Airport (KIA)',
+          step: 'AWAITING_TIMING',
+          updatedAt: Date.now(),
+        };
+        this.store.setSession(fromPhone, activeSession);
+      } else if (actionId === 'btn_confirm') {
+        activeSession = {
+          vipId: user.id,
+          phone: fromPhone,
+          pickupLocation: 'Vidhana Soudha Gate 1',
+          dropLocation: 'Kempegowda Intl Airport (KIA)',
+          step: 'AWAITING_CONFIRMATION',
+          timingType: 'IMMEDIATE',
+          time: 'Immediate VIP Dispatch (On-Demand)',
+          date: new Date().toISOString().split('T')[0],
+          updatedAt: Date.now(),
+        };
+        this.store.setSession(fromPhone, activeSession);
+      }
+    }
+
     if (activeSession && activeSession.step !== 'IDLE') {
       await this.processSessionStep(user, fromPhone, rawText, actionId);
       return;
