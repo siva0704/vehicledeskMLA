@@ -130,11 +130,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const refreshState = async () => {
     try {
       const state = await api.getState();
-      setUsers(state.users);
-      setVehicles(state.vehicles);
-      setDrivers(state.drivers);
-      setTrips(state.trips);
-      setAuditLogs(state.auditLogs);
+      if (Array.isArray(state?.users)) setUsers(state.users);
+      if (Array.isArray(state?.vehicles)) setVehicles(state.vehicles);
+      if (Array.isArray(state?.drivers)) setDrivers(state.drivers);
+      if (Array.isArray(state?.trips)) setTrips(state.trips);
+      if (Array.isArray(state?.auditLogs)) setAuditLogs(state.auditLogs);
       setBackendConnected(true);
     } catch (err) {
       setBackendConnected(false);

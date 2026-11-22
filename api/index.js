@@ -911,7 +911,7 @@ Your mobile number (${fromPhone}) is not registered in the active protocol roste
       return;
     }
     const command = (actionId || rawText).trim().toUpperCase();
-    const isGreetingOrReset = /^(HI+|HEY+|HELLO+|NAMASKAR[A]?|NAMASTE|START|RESTART|RESET|MENU|HELP)$/i.test(rawText) || command === "HELP" || command === "MENU" || command === "START" || command === "RESET";
+    const isGreetingOrReset = /^(HI+|HEY+|HELLO+|NAMASKAR[A]?|NAMASTE|START|RESTART|RESET|MENU|HELP)\b/i.test(rawText) || command === "HELP" || command === "MENU" || command === "START" || command === "RESET";
     if (isGreetingOrReset) {
       this.store.clearSession(fromPhone);
       await this.sendMainMenu(user, fromPhone);
@@ -926,6 +926,26 @@ Your mobile number (${fromPhone}) is not registered in the active protocol roste
       return;
     }
     if (command === "BTN_BOOK" || command === "BOOK" || command === "BOOK CAR" || command === "NEW") {
+      const activeTrip = this.store.findActiveTripForVip(user.id);
+      if (activeTrip && activeTrip.status !== "COMPLETED" && activeTrip.status !== "CANCELLED") {
+        await this.waService.sendInteractiveButtons(
+          fromPhone,
+          `\u26A0\uFE0F Hon. *${user.name}*, you have an active trip request (*${activeTrip.id}* - ${activeTrip.status}).
+
+Would you like to track your active trip or book an additional vehicle?`,
+          [
+            { id: "btn_status", title: "Track Active Trip" },
+            { id: "btn_force_new", title: "Book Another Car" },
+            { id: "btn_cancel", title: "Cancel Active Trip" }
+          ]
+        );
+        return;
+      }
+      this.store.clearSession(fromPhone);
+      await this.startStepByStepBooking(user, fromPhone);
+      return;
+    }
+    if (command === "BTN_FORCE_NEW") {
       this.store.clearSession(fromPhone);
       await this.startStepByStepBooking(user, fromPhone);
       return;
