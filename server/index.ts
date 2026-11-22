@@ -393,7 +393,16 @@ app.post('/api/reset', (_req, res) => {
 export { app, store, waService, botEngine };
 export default app;
 
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+const isMainModule = Boolean(
+  process.argv[1] && (
+    process.argv[1].endsWith('server/index.ts') || 
+    process.argv[1].endsWith('server\\index.ts') ||
+    process.argv[1].endsWith('server/index.js') || 
+    process.argv[1].endsWith('server\\index.js')
+  )
+);
+
+if (isMainModule && !process.env.VERCEL && !process.env.SERVERLESS && process.env.NODE_ENV !== 'test') {
   const server = http.createServer(app);
   server.listen(PORT, () => {
     console.log(`[VehicleDesk Server] Running on http://localhost:${PORT}`);
