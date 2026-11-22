@@ -303,15 +303,40 @@ var VehicleDeskStore = class {
   getAuditLogs() {
     return this.state.auditLogs;
   }
+  reloadIfChanged() {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const raw = fs.readFileSync(this.filePath, "utf-8");
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.sessions) {
+          this.state.sessions = { ...this.state.sessions, ...parsed.sessions };
+        }
+        if (parsed && Array.isArray(parsed.trips)) {
+          this.state.trips = parsed.trips;
+        }
+      }
+    } catch {
+    }
+  }
   getSession(phone) {
-    return this.state.sessions[phone];
+    this.reloadIfChanged();
+    const cleanKey = phone.replace(/[^\d]/g, "");
+    return this.state.sessions[cleanKey] || this.state.sessions[phone] || this.state.sessions[`+${cleanKey}`];
   }
   setSession(phone, session) {
+    this.reloadIfChanged();
+    const cleanKey = phone.replace(/[^\d]/g, "");
+    this.state.sessions[cleanKey] = session;
     this.state.sessions[phone] = session;
+    this.state.sessions[`+${cleanKey}`] = session;
     this.save();
   }
   clearSession(phone) {
+    this.reloadIfChanged();
+    const cleanKey = phone.replace(/[^\d]/g, "");
+    delete this.state.sessions[cleanKey];
     delete this.state.sessions[phone];
+    delete this.state.sessions[`+${cleanKey}`];
     this.save();
   }
   findUserByPhone(phone) {
@@ -886,6 +911,12 @@ Your mobile number (${fromPhone}) is not registered in the active protocol roste
       return;
     }
     const command = (actionId || rawText).trim().toUpperCase();
+    const isGreetingOrReset = /^(HI+|HEY+|HELLO+|NAMASKAR[A]?|NAMASTE|START|RESTART|RESET|MENU|HELP)$/i.test(rawText) || command === "HELP" || command === "MENU" || command === "START" || command === "RESET";
+    if (isGreetingOrReset) {
+      this.store.clearSession(fromPhone);
+      await this.sendMainMenu(user, fromPhone);
+      return;
+    }
     if (command === "BTN_STATUS" || command === "STATUS" || command === "MY TRIP" || command === "TRACK") {
       await this.handleTripStatus(user, fromPhone);
       return;
@@ -895,11 +926,8 @@ Your mobile number (${fromPhone}) is not registered in the active protocol roste
       return;
     }
     if (command === "BTN_BOOK" || command === "BOOK" || command === "BOOK CAR" || command === "NEW") {
+      this.store.clearSession(fromPhone);
       await this.startStepByStepBooking(user, fromPhone);
-      return;
-    }
-    if (command === "HELP" || command === "MENU" || command === "HI" || command === "HELLO" || command === "NAMASKARA") {
-      await this.sendMainMenu(user, fromPhone);
       return;
     }
     const activeSession = this.store.getSession(fromPhone);
@@ -1084,6 +1112,10 @@ Hon. ${user.name}, you currently do not have any active vehicle requests schedul
     }
     switch (session.step) {
       case "AWAITING_PICKUP": {
+        if (actionId.startsWith("drop_") || actionId.startsWith("time_") || actionId === "btn_book") {
+          await this.startStepByStepBooking(user, phone);
+          return;
+        }
         const pickupChoice = actionId.startsWith("loc_") ? rawText.trim() : rawText.trim();
         session.pickupLocation = pickupChoice || "Vidhana Soudha Gate 1";
         session.step = "AWAITING_DROP";
@@ -1147,6 +1179,18 @@ Please select your destination from frequent official drop points, or reply with
         break;
       }
       case "AWAITING_DROP": {
+        if (actionId.startsWith("loc_")) {
+          session.pickupLocation = rawText.trim() || "Vidhana Soudha Gate 1";
+          session.updatedAt = Date.now();
+          this.store.setSession(phone, session);
+          await this.waService.sendTextMessage(
+            phone,
+            `\u{1F4CD} Updated pickup to: *${session.pickupLocation}*.
+
+Please select your destination from the list above, or reply with destination in text.`
+          );
+          return;
+        }
         const dropChoice = actionId.startsWith("drop_") ? rawText.trim() : rawText.trim();
         if (actionId === "drop_round_trip" || dropChoice.toUpperCase().includes("ROUND") || dropChoice.toUpperCase() === "RT") {
           session.isRoundTrip = true;
@@ -1173,7 +1217,47 @@ Please choose your dispatch timing:`,
         break;
       }
       case "AWAITING_TIMING": {
+        if (actionId.startsWith("loc_")) {
+          session.pickupLocation = rawText.trim();
+          session.step = "AWAITING_DROP";
+          this.store.setSession(phone, session);
+          await this.waService.sendTextMessage(
+            phone,
+            `\u{1F4CD} Pickup location updated to: *${session.pickupLocation}*.
+Please select your destination:`
+          );
+          return;
+        }
+        if (actionId.startsWith("drop_")) {
+          session.dropLocation = actionId === "drop_round_trip" ? `Round Trip (Return to ${session.pickupLocation})` : rawText.trim();
+          this.store.setSession(phone, session);
+          await this.waService.sendInteractiveButtons(
+            phone,
+            `\u2705 Destination updated to: *${session.dropLocation}*
+
+Please choose your dispatch timing:`,
+            [
+              { id: "time_immediate", title: "\u26A1 Immediate Dispatch" },
+              { id: "time_schedule", title: "\u{1F4C5} Schedule Ride" },
+              { id: "btn_abort", title: "Cancel" }
+            ]
+          );
+          return;
+        }
         const isImmediate = actionId === "time_immediate" || rawText.toUpperCase().includes("IMMEDIATE") || rawText.toUpperCase().includes("NOW");
+        const isSchedule = actionId === "time_schedule" || rawText.toUpperCase().includes("SCHEDULE") || rawText.toUpperCase().includes("LATER");
+        if (!isImmediate && !isSchedule) {
+          await this.waService.sendInteractiveButtons(
+            phone,
+            `Please select your dispatch timing for trip from *${session.pickupLocation}* to *${session.dropLocation}*:`,
+            [
+              { id: "time_immediate", title: "\u26A1 Immediate Dispatch" },
+              { id: "time_schedule", title: "\u{1F4C5} Schedule Ride" },
+              { id: "btn_abort", title: "Cancel" }
+            ]
+          );
+          return;
+        }
         if (isImmediate) {
           session.timingType = "IMMEDIATE";
           const today = /* @__PURE__ */ new Date();
@@ -1215,6 +1299,33 @@ Hon. ${user.name}, please reply with your preferred date and time:
         break;
       }
       case "AWAITING_DATETIME_CUSTOM": {
+        if (actionId === "time_immediate") {
+          session.timingType = "IMMEDIATE";
+          const today = /* @__PURE__ */ new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth() + 1).padStart(2, "0");
+          const dd = String(today.getDate()).padStart(2, "0");
+          session.date = `${yyyy}-${mm}-${dd}`;
+          session.time = "Immediate VIP Dispatch (On-Demand)";
+          session.step = "AWAITING_CONFIRMATION";
+          session.updatedAt = Date.now();
+          this.store.setSession(phone, session);
+          const vClass2 = getClassForSeniority(user);
+          const confirmationMsg2 = `\u{1F4CB} *Confirm Vehicle Dispatch Details*:
+
+\u{1F3DB} *VIP*: ${user.name} (${user.designation || "Hon. MLA"})
+\u{1F4CD} *Pickup*: ${session.pickupLocation}
+\u{1F3C1} *Drop*: ${session.dropLocation}
+\u{1F552} *Timing*: \u26A1 *Immediate Dispatch (On-Demand)*
+\u2B50 *Entitled Class*: ${vClass2}
+
+Dispatch highest-priority available vehicle immediately?`;
+          await this.waService.sendInteractiveButtons(phone, confirmationMsg2, [
+            { id: "btn_confirm", title: "Confirm Allocation" },
+            { id: "btn_abort", title: "Discard" }
+          ]);
+          return;
+        }
         const dtParsed = this.normalizeDateTimeInput(rawText);
         session.date = dtParsed.date;
         session.time = dtParsed.time;
@@ -1249,9 +1360,24 @@ Please confirm allocation dispatch:`;
             notes: session.timingType === "IMMEDIATE" ? "On-demand immediate dispatch via WhatsApp" : "Scheduled WhatsApp conversational booking"
           });
           this.store.clearSession(phone);
-        } else {
+        } else if (actionId === "btn_abort" || rawText.toUpperCase() === "DISCARD" || rawText.toUpperCase() === "CANCEL" || rawText.toUpperCase() === "NO") {
           this.store.clearSession(phone);
-          await this.waService.sendTextMessage(phone, `Booking cancelled.`);
+          await this.waService.sendTextMessage(phone, `Vehicle request discarded.`);
+        } else {
+          const vClass = getClassForSeniority(user);
+          const confirmationMsg = `\u{1F4CB} *Confirm Vehicle Dispatch Details*:
+
+\u{1F3DB} *VIP*: ${user.name} (${user.designation || "Hon. MLA"})
+\u{1F4CD} *Pickup*: ${session.pickupLocation}
+\u{1F3C1} *Drop*: ${session.dropLocation}
+\u{1F552} *Timing*: ${session.time || "\u26A1 Immediate Dispatch"}
+\u2B50 *Entitled Class*: ${vClass}
+
+Please tap Confirm Allocation or Discard:`;
+          await this.waService.sendInteractiveButtons(phone, confirmationMsg, [
+            { id: "btn_confirm", title: "Confirm Allocation" },
+            { id: "btn_abort", title: "Discard" }
+          ]);
         }
         break;
       }
@@ -1383,6 +1509,18 @@ app.use((req, res, next) => {
 var store = new VehicleDeskStore();
 var waService = new WhatsAppService();
 var botEngine = new BotEngine(store, waService);
+var recentWebhookMsgs = /* @__PURE__ */ new Map();
+function isDuplicateWebhook(key) {
+  const now = Date.now();
+  for (const [k, time] of recentWebhookMsgs.entries()) {
+    if (now - time > 8e3) recentWebhookMsgs.delete(k);
+  }
+  if (recentWebhookMsgs.has(key)) {
+    return true;
+  }
+  recentWebhookMsgs.set(key, now);
+  return false;
+}
 app.get(["/health", "/api/health"], (_req, res) => {
   res.json({
     status: "ok",
@@ -1432,6 +1570,11 @@ app.post("/api/whatsapp/webhook", async (req, res) => {
           }
         }
         console.log(`[Webhook] Processing incoming from: ${fromPhone}, text: "${textBody}", buttonId: "${buttonId || ""}"`);
+        const dedupKey = `${fromPhone}:${buttonId || ""}:${textBody}`;
+        if (isDuplicateWebhook(dedupKey)) {
+          console.log(`[Webhook] Ignoring rapid duplicate webhook payload: ${dedupKey}`);
+          continue;
+        }
         await botEngine.handleInboundMessage(fromPhone, textBody, buttonId);
       }
     }

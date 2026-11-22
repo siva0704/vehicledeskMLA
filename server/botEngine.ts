@@ -26,6 +26,20 @@ export class BotEngine {
 
     const command = (actionId || rawText).trim().toUpperCase();
 
+    // 0. Greeting / Reset / Start phrases ALWAYS clear session and show Main Menu
+    const isGreetingOrReset =
+      /^(HI+|HEY+|HELLO+|NAMASKAR[A]?|NAMASTE|START|RESTART|RESET|MENU|HELP)$/i.test(rawText) ||
+      command === 'HELP' ||
+      command === 'MENU' ||
+      command === 'START' ||
+      command === 'RESET';
+
+    if (isGreetingOrReset) {
+      this.store.clearSession(fromPhone);
+      await this.sendMainMenu(user, fromPhone);
+      return;
+    }
+
     // 1. Direct Command / Button Checks
     if (command === 'BTN_STATUS' || command === 'STATUS' || command === 'MY TRIP' || command === 'TRACK') {
       await this.handleTripStatus(user, fromPhone);
@@ -38,12 +52,8 @@ export class BotEngine {
     }
 
     if (command === 'BTN_BOOK' || command === 'BOOK' || command === 'BOOK CAR' || command === 'NEW') {
+      this.store.clearSession(fromPhone);
       await this.startStepByStepBooking(user, fromPhone);
-      return;
-    }
-
-    if (command === 'HELP' || command === 'MENU' || command === 'HI' || command === 'HELLO' || command === 'NAMASKARA') {
-      await this.sendMainMenu(user, fromPhone);
       return;
     }
 
@@ -262,6 +272,12 @@ export class BotEngine {
 
     switch (session.step) {
       case 'AWAITING_PICKUP': {
+        // If user tapped a drop action or time action by mistake, ignore or re-ask
+        if (actionId.startsWith('drop_') || actionId.startsWith('time_') || actionId === 'btn_book') {
+          await this.startStepByStepBooking(user, phone);
+          return;
+        }
+
         const pickupChoice = actionId.startsWith('loc_') ? rawText.trim() : rawText.trim();
         session.pickupLocation = pickupChoice || 'Vidhana Soudha Gate 1';
         session.step = 'AWAITING_DROP';
@@ -326,6 +342,18 @@ export class BotEngine {
       }
 
       case 'AWAITING_DROP': {
+        // Guard against duplicate loc_* click or re-tapped pickup point:
+        if (actionId.startsWith('loc_')) {
+          session.pickupLocation = rawText.trim() || 'Vidhana Soudha Gate 1';
+          session.updatedAt = Date.now();
+          this.store.setSession(phone, session);
+          await this.waService.sendTextMessage(
+            phone,
+            `📍 Updated pickup to: *${session.pickupLocation}*.\n\nPlease select your destination from the list above, or reply with destination in text.`
+          );
+          return;
+        }
+
         const dropChoice = actionId.startsWith('drop_') ? rawText.trim() : rawText.trim();
         if (
           actionId === 'drop_round_trip' ||
@@ -357,10 +385,57 @@ export class BotEngine {
       }
 
       case 'AWAITING_TIMING': {
+        // Guard against duplicate loc_* or drop_* clicks:
+        if (actionId.startsWith('loc_')) {
+          session.pickupLocation = rawText.trim();
+          session.step = 'AWAITING_DROP';
+          this.store.setSession(phone, session);
+          await this.waService.sendTextMessage(
+            phone,
+            `📍 Pickup location updated to: *${session.pickupLocation}*.\nPlease select your destination:`
+          );
+          return;
+        }
+        if (actionId.startsWith('drop_')) {
+          session.dropLocation =
+            actionId === 'drop_round_trip'
+              ? `Round Trip (Return to ${session.pickupLocation})`
+              : rawText.trim();
+          this.store.setSession(phone, session);
+          await this.waService.sendInteractiveButtons(
+            phone,
+            `✅ Destination updated to: *${session.dropLocation}*\n\nPlease choose your dispatch timing:`,
+            [
+              { id: 'time_immediate', title: '⚡ Immediate Dispatch' },
+              { id: 'time_schedule', title: '📅 Schedule Ride' },
+              { id: 'btn_abort', title: 'Cancel' },
+            ]
+          );
+          return;
+        }
+
         const isImmediate =
           actionId === 'time_immediate' ||
           rawText.toUpperCase().includes('IMMEDIATE') ||
           rawText.toUpperCase().includes('NOW');
+
+        const isSchedule =
+          actionId === 'time_schedule' ||
+          rawText.toUpperCase().includes('SCHEDULE') ||
+          rawText.toUpperCase().includes('LATER');
+
+        if (!isImmediate && !isSchedule) {
+          await this.waService.sendInteractiveButtons(
+            phone,
+            `Please select your dispatch timing for trip from *${session.pickupLocation}* to *${session.dropLocation}*:`,
+            [
+              { id: 'time_immediate', title: '⚡ Immediate Dispatch' },
+              { id: 'time_schedule', title: '📅 Schedule Ride' },
+              { id: 'btn_abort', title: 'Cancel' },
+            ]
+          );
+          return;
+        }
 
         if (isImmediate) {
           session.timingType = 'IMMEDIATE';
@@ -403,6 +478,36 @@ export class BotEngine {
       }
 
       case 'AWAITING_DATETIME_CUSTOM': {
+        // If user clicked immediate or buttons
+        if (actionId === 'time_immediate') {
+          session.timingType = 'IMMEDIATE';
+          const today = new Date();
+          const yyyy = today.getFullYear();
+          const mm = String(today.getMonth() + 1).padStart(2, '0');
+          const dd = String(today.getDate()).padStart(2, '0');
+          session.date = `${yyyy}-${mm}-${dd}`;
+          session.time = 'Immediate VIP Dispatch (On-Demand)';
+          session.step = 'AWAITING_CONFIRMATION';
+          session.updatedAt = Date.now();
+          this.store.setSession(phone, session);
+
+          const vClass = getClassForSeniority(user);
+          const confirmationMsg =
+            `📋 *Confirm Vehicle Dispatch Details*:\n\n` +
+            `🏛 *VIP*: ${user.name} (${user.designation || 'Hon. MLA'})\n` +
+            `📍 *Pickup*: ${session.pickupLocation}\n` +
+            `🏁 *Drop*: ${session.dropLocation}\n` +
+            `🕒 *Timing*: ⚡ *Immediate Dispatch (On-Demand)*\n` +
+            `⭐ *Entitled Class*: ${vClass}\n\n` +
+            `Dispatch highest-priority available vehicle immediately?`;
+
+          await this.waService.sendInteractiveButtons(phone, confirmationMsg, [
+            { id: 'btn_confirm', title: 'Confirm Allocation' },
+            { id: 'btn_abort', title: 'Discard' },
+          ]);
+          return;
+        }
+
         const dtParsed = this.normalizeDateTimeInput(rawText);
         session.date = dtParsed.date;
         session.time = dtParsed.time;
@@ -441,9 +546,25 @@ export class BotEngine {
               : 'Scheduled WhatsApp conversational booking',
           });
           this.store.clearSession(phone);
-        } else {
+        } else if (actionId === 'btn_abort' || rawText.toUpperCase() === 'DISCARD' || rawText.toUpperCase() === 'CANCEL' || rawText.toUpperCase() === 'NO') {
           this.store.clearSession(phone);
-          await this.waService.sendTextMessage(phone, `Booking cancelled.`);
+          await this.waService.sendTextMessage(phone, `Vehicle request discarded.`);
+        } else {
+          // Re-send confirmation prompt
+          const vClass = getClassForSeniority(user);
+          const confirmationMsg =
+            `📋 *Confirm Vehicle Dispatch Details*:\n\n` +
+            `🏛 *VIP*: ${user.name} (${user.designation || 'Hon. MLA'})\n` +
+            `📍 *Pickup*: ${session.pickupLocation}\n` +
+            `🏁 *Drop*: ${session.dropLocation}\n` +
+            `🕒 *Timing*: ${session.time || '⚡ Immediate Dispatch'}\n` +
+            `⭐ *Entitled Class*: ${vClass}\n\n` +
+            `Please tap Confirm Allocation or Discard:`;
+
+          await this.waService.sendInteractiveButtons(phone, confirmationMsg, [
+            { id: 'btn_confirm', title: 'Confirm Allocation' },
+            { id: 'btn_abort', title: 'Discard' },
+          ]);
         }
         break;
       }

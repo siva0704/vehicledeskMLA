@@ -28,6 +28,21 @@ const store = new VehicleDeskStore();
 const waService = new WhatsAppService();
 const botEngine = new BotEngine(store, waService);
 
+// Deduplication map to filter rapid duplicate webhook deliveries
+const recentWebhookMsgs = new Map<string, number>();
+
+function isDuplicateWebhook(key: string): boolean {
+  const now = Date.now();
+  for (const [k, time] of recentWebhookMsgs.entries()) {
+    if (now - time > 8000) recentWebhookMsgs.delete(k);
+  }
+  if (recentWebhookMsgs.has(key)) {
+    return true;
+  }
+  recentWebhookMsgs.set(key, now);
+  return false;
+}
+
 // Health check
 app.get(['/health', '/api/health'], (_req, res) => {
   res.json({
@@ -90,6 +105,11 @@ app.post('/api/whatsapp/webhook', async (req, res) => {
         }
 
         console.log(`[Webhook] Processing incoming from: ${fromPhone}, text: "${textBody}", buttonId: "${buttonId || ''}"`);
+        const dedupKey = `${fromPhone}:${buttonId || ''}:${textBody}`;
+        if (isDuplicateWebhook(dedupKey)) {
+          console.log(`[Webhook] Ignoring rapid duplicate webhook payload: ${dedupKey}`);
+          continue;
+        }
         await botEngine.handleInboundMessage(fromPhone, textBody, buttonId);
       }
     }

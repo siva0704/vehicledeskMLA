@@ -344,17 +344,46 @@ export class VehicleDeskStore {
     return this.state.auditLogs;
   }
 
+  private reloadIfChanged() {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const raw = fs.readFileSync(this.filePath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.sessions) {
+          this.state.sessions = { ...this.state.sessions, ...parsed.sessions };
+        }
+        if (parsed && Array.isArray(parsed.trips)) {
+          this.state.trips = parsed.trips;
+        }
+      }
+    } catch {}
+  }
+
   public getSession(phone: string): BookingSession | undefined {
-    return this.state.sessions[phone];
+    this.reloadIfChanged();
+    const cleanKey = phone.replace(/[^\d]/g, '');
+    return (
+      this.state.sessions[cleanKey] ||
+      this.state.sessions[phone] ||
+      this.state.sessions[`+${cleanKey}`]
+    );
   }
 
   public setSession(phone: string, session: BookingSession) {
+    this.reloadIfChanged();
+    const cleanKey = phone.replace(/[^\d]/g, '');
+    this.state.sessions[cleanKey] = session;
     this.state.sessions[phone] = session;
+    this.state.sessions[`+${cleanKey}`] = session;
     this.save();
   }
 
   public clearSession(phone: string) {
+    this.reloadIfChanged();
+    const cleanKey = phone.replace(/[^\d]/g, '');
+    delete this.state.sessions[cleanKey];
     delete this.state.sessions[phone];
+    delete this.state.sessions[`+${cleanKey}`];
     this.save();
   }
 
