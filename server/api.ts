@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import app from '../server/index';
+import app from './index';
 
 export default function handler(req: Request, res: Response) {
   const originalUrl = (req.headers['x-forwarded-uri'] || req.headers['x-matched-path']) as string;

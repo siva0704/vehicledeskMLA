@@ -1663,7 +1663,7 @@ app.post("/api/reset", (_req, res) => {
   const state = store.reset();
   res.json({ ok: true, state });
 });
-var server_default = app;
+var index_default = app;
 var isMainModule = Boolean(
   process.argv[1] && (process.argv[1].endsWith("server/index.ts") || process.argv[1].endsWith("server\\index.ts") || process.argv[1].endsWith("server/index.js") || process.argv[1].endsWith("server\\index.js"))
 );
@@ -1674,13 +1674,13 @@ if (isMainModule && !process.env.VERCEL && !process.env.SERVERLESS && process.en
   });
 }
 
-// api/index.ts
+// server/api.ts
 function handler(req, res) {
   const originalUrl = req.headers["x-forwarded-uri"] || req.headers["x-matched-path"];
   if (originalUrl && (req.url === "/api" || req.url === "/")) {
     req.url = originalUrl;
   }
-  return server_default(req, res);
+  return index_default(req, res);
 }
 export {
   handler as default
