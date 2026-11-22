@@ -3,167 +3,157 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StoreProvider, useStore } from './store';
 import { TopNav } from './components/TopNav';
-import { VipPortal } from './components/VipPortal';
-import { DriverPortal } from './components/DriverPortal';
+import { GatewayHome } from './components/GatewayHome';
+import { AdminLogin } from './components/AdminLogin';
+import { DriverLogin } from './components/DriverLogin';
 import { AdminPortal } from './components/AdminPortal';
-import { AuthModal } from './components/AuthModal';
+import { DriverPortal } from './components/DriverPortal';
 import { RuleEngineExplainerModal } from './components/RuleEngineExplainerModal';
 import { translations } from './translations';
-import { Shield, Sparkles, UserCheck } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { currentUser, language, switchRole } = useStore();
+  const { currentUser, language } = useStore();
   const t = translations[language];
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState<string>('vip-home');
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  // Route state initialized from window.location.hash or pathname
+  const [route, setRoute] = useState<string>(() => {
+    const hash = window.location.hash.replace(/^#/, '');
+    if (hash) return hash;
+    const path = window.location.pathname;
+    if (path.startsWith('/admin') || path.startsWith('/driver')) return path;
+    return '/';
+  });
+
+  // Tab states for sub-portals
+  const [adminTab, setAdminTab] = useState<'admin-board' | 'admin-report'>('admin-board');
+  const [driverTab, setDriverTab] = useState<'driver-status' | 'driver-trip' | 'driver-profile'>('driver-status');
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
 
-  // Sync default tab when user switches role
-  const handleSelectTab = (tab: string) => {
-    setActiveTab(tab);
+  // Sync hash routing
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#/, '') || '/';
+      setRoute(hash);
+      if (hash === '/driver/profile') {
+        setDriverTab('driver-profile');
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const navigateTo = (newRoute: string) => {
+    setRoute(newRoute);
+    window.location.hash = newRoute;
+    if (newRoute === '/driver/profile') {
+      setDriverTab('driver-profile');
+    }
   };
 
-  const handleRoleQuickSwitch = (role: 'VIP' | 'DRIVER' | 'ADMIN') => {
-    switchRole(role);
-    if (role === 'VIP') setActiveTab('vip-home');
-    if (role === 'DRIVER') setActiveTab('driver-status');
-    if (role === 'ADMIN') setActiveTab('admin-board');
-  };
+  // Redirect if logged in user navigates to login
+  useEffect(() => {
+    if (currentUser?.role === 'ADMIN' && (route === '/admin/login' || route === '/')) {
+      navigateTo('/admin/dashboard');
+    } else if (currentUser?.role === 'DRIVER' && (route === '/driver/login' || route === '/')) {
+      navigateTo('/driver/dashboard');
+    }
+  }, [currentUser]);
+
+  // Determine active subtab for topnav indicator
+  const currentNavTab = route.startsWith('/admin')
+    ? adminTab
+    : route.startsWith('/driver')
+    ? driverTab
+    : 'gateway';
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      {/* Top Bar adhering to Top Bar Contract */}
+      {/* Top Navigation Bar */}
       <TopNav
-        currentTab={activeTab}
-        onSelectTab={handleSelectTab}
-        onOpenAuth={() => setAuthModalOpen(true)}
-        onOpenRuleInfo={() => setRuleModalOpen(true)}
+        currentRoute={route}
+        currentTab={currentNavTab}
+        onNavigate={navigateTo}
+        onSelectTab={(tab) => {
+          if (tab.startsWith('admin-')) {
+            setAdminTab(tab as 'admin-board' | 'admin-report');
+            navigateTo('/admin/dashboard');
+          } else if (tab.startsWith('driver-')) {
+            setDriverTab(tab as 'driver-status' | 'driver-trip' | 'driver-profile');
+            navigateTo('/driver/dashboard');
+          }
+        }}
+        onOpenProfile={() => {
+          setDriverTab('driver-profile');
+          navigateTo('/driver/dashboard');
+        }}
       />
 
-      {/* Role Swimlane Switcher Bar (For Easy Multi-Role Acceptance Testing) */}
-      <div className="bg-slate-900 text-white border-b border-slate-800 py-2 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-300">RBAC Active View:</span>
-            <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-              {currentUser ? currentUser.role : 'Guest'}
-            </span>
-            <span className="text-slate-400 hidden md:inline">
-              · {currentUser ? currentUser.name : 'Sign in to access desk'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 text-[11px] mr-1 hidden sm:inline">
-              Test Swimlanes:
-            </span>
-            <button
-              onClick={() => handleRoleQuickSwitch('VIP')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
-                currentUser?.role === 'VIP'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-              }`}
-            >
-              VIP View
-            </button>
-            <button
-              onClick={() => handleRoleQuickSwitch('DRIVER')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
-                currentUser?.role === 'DRIVER'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-              }`}
-            >
-              Driver View
-            </button>
-            <button
-              onClick={() => handleRoleQuickSwitch('ADMIN')}
-              className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
-                currentUser?.role === 'ADMIN'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
-              }`}
-            >
-              Admin View
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Workspace Canvas */}
+      {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {!currentUser ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center max-w-xl mx-auto space-y-4 my-8 shadow-xs">
-            <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center mx-auto font-bold text-lg">
-              VD
-            </div>
-            <h2 className="text-xl font-bold text-slate-900">{t.auth.title}</h2>
-            <p className="text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
-              {t.auth.subtitle}
-            </p>
-            <div className="pt-2">
-              <button
-                onClick={() => setAuthModalOpen(true)}
-                className="py-2.5 px-6 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors shadow-xs"
-              >
-                {t.nav.login}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* VIP ROLE SCREENS (Home -> Request -> My Trip) */}
-            {currentUser.role === 'VIP' && (
-              <VipPortal
-                activeSubTab={
-                  activeTab.startsWith('vip-')
-                    ? (activeTab as 'vip-home' | 'vip-request' | 'vip-trip')
-                    : 'vip-home'
-                }
-                onChangeSubTab={(tab) => setActiveTab(tab)}
-              />
-            )}
+        {/* 1. Gateway Landing View */}
+        {route === '/' && <GatewayHome onNavigate={navigateTo} />}
 
-            {/* DRIVER ROLE SCREENS (Status -> Today's Trip) */}
-            {currentUser.role === 'DRIVER' && (
-              <DriverPortal
-                activeSubTab={
-                  activeTab.startsWith('driver-')
-                    ? (activeTab as 'driver-status' | 'driver-trip')
-                    : 'driver-status'
-                }
-                onChangeSubTab={(tab) => setActiveTab(tab)}
-              />
-            )}
-
-            {/* ADMIN ROLE SCREENS (Live Board -> Override & Report) */}
-            {currentUser.role === 'ADMIN' && (
-              <AdminPortal
-                activeSubTab={
-                  activeTab.startsWith('admin-')
-                    ? (activeTab as 'admin-board' | 'admin-report')
-                    : 'admin-board'
-                }
-                onChangeSubTab={(tab) => setActiveTab(tab)}
-              />
-            )}
-          </>
+        {/* 2. Admin Portal Views */}
+        {route === '/admin/login' && (
+          <AdminLogin
+            onSuccess={() => navigateTo('/admin/dashboard')}
+            onBack={() => navigateTo('/')}
+          />
         )}
+
+        {route === '/admin/dashboard' &&
+          (currentUser?.role === 'ADMIN' ? (
+            <AdminPortal activeSubTab={adminTab} onChangeSubTab={setAdminTab} />
+          ) : (
+            <AdminLogin
+              onSuccess={() => navigateTo('/admin/dashboard')}
+              onBack={() => navigateTo('/')}
+            />
+          ))}
+
+        {/* 3. Driver Portal Views */}
+        {route === '/driver/login' && (
+          <DriverLogin
+            onSuccess={() => navigateTo('/driver/dashboard')}
+            onBack={() => navigateTo('/')}
+          />
+        )}
+
+        {(route === '/driver/dashboard' || route === '/driver/profile') &&
+          (currentUser?.role === 'DRIVER' ? (
+            <DriverPortal
+              activeSubTab={route === '/driver/profile' ? 'driver-profile' : driverTab}
+              onChangeSubTab={(tab) => {
+                setDriverTab(tab);
+                if (tab === 'driver-profile') {
+                  navigateTo('/driver/profile');
+                } else {
+                  navigateTo('/driver/dashboard');
+                }
+              }}
+            />
+          ) : (
+            <DriverLogin
+              onSuccess={() => navigateTo('/driver/dashboard')}
+              onBack={() => navigateTo('/')}
+            />
+          ))}
       </main>
 
-      {/* Clean Quiet Footer */}
+      {/* Official Footer */}
       <footer className="border-t border-slate-200 bg-white py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-800">{t.appTitle}</span>
+            <span className="font-semibold text-slate-800">
+              Department of Personnel and Administrative Reforms (DPAR)
+            </span>
             <span aria-hidden="true">·</span>
-            <span>Phase 1 RBAC System</span>
+            <span>Government of Karnataka</span>
             <span aria-hidden="true">·</span>
             <span>English & ಕನ್ನಡ</span>
           </div>
@@ -175,19 +165,14 @@ const AppContent: React.FC = () => {
             >
               Rules Engine Specification
             </button>
-            <span className="font-mono-nums text-[11px] text-slate-400">
+            <span className="font-mono text-[11px] text-slate-400">
               Bangalore State Protocol Hub
             </span>
           </div>
         </div>
       </footer>
 
-      {/* Modals */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-      />
-
+      {/* Rule Engine Modal */}
       <RuleEngineExplainerModal
         isOpen={ruleModalOpen}
         onClose={() => setRuleModalOpen(false)}

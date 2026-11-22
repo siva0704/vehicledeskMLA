@@ -1,244 +1,190 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { translations } from '../translations';
-import { Role } from '../types';
 import {
   Car,
   Globe,
   LogOut,
-  User as UserIcon,
-  Shield,
-  Clock,
   Compass,
   FileText,
-  RotateCcw,
-  Sliders,
+  User,
+  ExternalLink,
+  ChevronDown,
+  Smartphone,
 } from 'lucide-react';
 
 interface TopNavProps {
+  currentRoute: string;
   currentTab: string;
+  onNavigate: (route: string) => void;
   onSelectTab: (tab: string) => void;
-  onOpenAuth: () => void;
-  onOpenRuleInfo: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
+  currentRoute,
   currentTab,
+  onNavigate,
   onSelectTab,
-  onOpenAuth,
-  onOpenRuleInfo,
+  onOpenProfile,
 }) => {
-  const { currentUser, language, setLanguage, switchRole, logout, resetToDefaultData } =
-    useStore();
+  const { currentUser, language, setLanguage, logout, trips } = useStore();
   const t = translations[language];
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const getNavItems = () => {
-    if (!currentUser) return [];
+  const isAdminView = currentRoute.startsWith('/admin') || currentUser?.role === 'ADMIN';
+  const isDriverView = currentRoute.startsWith('/driver') || currentUser?.role === 'DRIVER';
 
-    switch (currentUser.role) {
-      case 'VIP':
-        return [
-          { id: 'vip-home', label: t.nav.vipHome, icon: Compass },
-          { id: 'vip-request', label: t.nav.vipRequest, icon: Car },
-          { id: 'vip-trip', label: t.nav.vipMyTrip, icon: Clock },
-        ];
-      case 'DRIVER':
-        return [
-          { id: 'driver-status', label: t.nav.driverStatus, icon: Sliders },
-          { id: 'driver-trip', label: t.nav.driverTrip, icon: Car },
-        ];
-      case 'ADMIN':
-        return [
-          { id: 'admin-board', label: t.nav.adminBoard, icon: Compass },
-          { id: 'admin-report', label: t.nav.adminReport, icon: FileText },
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const navItems = getNavItems();
+  const activeTripsCount = trips.filter(
+    (tr) => tr.status !== 'COMPLETED' && tr.status !== 'CANCELLED'
+  ).length;
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Zone 1: Single text element wordmark */}
-          <div className="flex items-center gap-3">
+    <header className="sticky top-2 z-50 px-3 sm:px-6 mb-3 transition-all">
+      <div className="max-w-7xl mx-auto">
+        <div className="apple-glass-island rounded-2xl sm:rounded-full px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-3 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-black/[0.08]">
+          {/* Brand Emblem & Wordmark */}
+          <div className="flex items-center gap-3 shrink-0">
             <button
-              onClick={() => {
-                if (currentUser?.role === 'VIP') onSelectTab('vip-home');
-                else if (currentUser?.role === 'DRIVER') onSelectTab('driver-status');
-                else if (currentUser?.role === 'ADMIN') onSelectTab('admin-board');
-              }}
-              className="text-left group flex items-center gap-2.5"
+              onClick={() => onNavigate('/')}
+              className="text-left group flex items-center gap-2.5 transition-transform active:scale-95"
+              aria-label="Home Gateway"
             >
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-sm tracking-wider">
-                VD
+              <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 shadow-xs ring-2 ring-amber-500/40 border border-amber-400/30 bg-slate-900 flex items-center justify-center">
+                <img
+                  src="/assets/vehicle-desk-emblem.svg"
+                  alt="Karnataka State Protocol Emblem"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <span className="text-lg font-bold tracking-tight text-slate-900 group-hover:text-slate-700 transition-colors">
-                {t.appTitle}
-              </span>
+              <div>
+                <div className="text-[13.5px] font-semibold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5 leading-snug">
+                  <span>Karnataka State Protocol</span>
+                  <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-black/5">
+                    DPAR
+                  </span>
+                </div>
+                <div className="text-[10.5px] text-slate-500 font-medium leading-none">
+                  {isAdminView
+                    ? 'Superintendent Fleet Administration'
+                    : isDriverView
+                    ? 'State Chauffeur Cockpit'
+                    : 'VIP & MLA Priority Dispatch Desk'}
+                </div>
+              </div>
             </button>
           </div>
 
-          {/* Zone 2: Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 sm:gap-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              return (
+          {/* Center Apple-style Segmented Navigation (Admin Only) */}
+          <nav className="hidden md:flex items-center">
+            {isAdminView && currentUser?.role === 'ADMIN' ? (
+              <div className="apple-segmented-track">
                 <button
-                  key={item.id}
-                  onClick={() => onSelectTab(item.id)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${
-                    isActive
-                      ? 'text-slate-900 bg-slate-100 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  onClick={() => onSelectTab('admin-board')}
+                  className={`apple-segmented-pill flex items-center gap-1.5 ${
+                    currentTab === 'admin-board' ? 'apple-segmented-pill-active' : ''
                   }`}
                 >
-                  <Icon className="w-4 h-4 text-slate-500" />
-                  <span>{item.label}</span>
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Live Allotment Board</span>
+                  {activeTripsCount > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                  )}
                 </button>
-              );
-            })}
+                <button
+                  onClick={() => onSelectTab('admin-report')}
+                  className={`apple-segmented-pill flex items-center gap-1.5 ${
+                    currentTab === 'admin-report' ? 'apple-segmented-pill-active' : ''
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Audit &amp; Daily Reports</span>
+                </button>
+              </div>
+            ) : isDriverView && currentUser?.role === 'DRIVER' ? (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Active Chauffeur Duty</span>
+                </div>
+              </div>
+            ) : (
+              <div className="apple-segmented-track">
+                <button
+                  onClick={() => onNavigate('/admin/login')}
+                  className="apple-segmented-pill hover:text-slate-900"
+                >
+                  Admin Portal
+                </button>
+                <button
+                  onClick={() => onNavigate('/driver/login')}
+                  className="apple-segmented-pill hover:text-slate-900"
+                >
+                  Chauffeur Cockpit
+                </button>
+              </div>
+            )}
           </nav>
 
-          {/* Zone 3: Actions & Controls */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Rule Engine Info Button */}
+          {/* Right Controls & Utilities */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* For Admin: Show 24/7 Priority Queue Status */}
+            {isAdminView && (
+              <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50/80 border border-emerald-200/60 text-[11px] font-semibold text-emerald-800">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>24/7 Priority Queue Active</span>
+              </div>
+            )}
+
+            {/* Language Switcher Pill */}
             <button
-              onClick={onOpenRuleInfo}
-              title="Inspect Rule Engine & RBAC Architecture"
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors whitespace-nowrap"
+              onClick={() => setLanguage(language === 'en' ? 'kn' : 'en')}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-slate-700 bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 transition-all active:scale-95"
+              title="Switch language between English & Kannada"
             >
-              <Shield className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Rules Engine</span>
+              <Globe className="w-3.5 h-3.5 text-slate-500" />
+              <span>{language === 'en' ? 'ಕನ್ನಡ' : 'EN'}</span>
             </button>
 
-            {/* Language Toggle: EN / ಕನ್ನಡ */}
-            <div className="flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200">
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  language === 'en'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setLanguage('kn')}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors ${
-                  language === 'kn'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                ಕನ್ನಡ
-              </button>
-            </div>
-
-            {/* Role Switcher (Crucial for Rapid Testing & Demonstration) */}
-            <div className="relative">
-              <button
-                onClick={() => setShowRoleMenu(!showRoleMenu)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 transition-colors shadow-2xs whitespace-nowrap"
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>Role: {currentUser ? currentUser.role : 'Guest'}</span>
-              </button>
-
-              {showRoleMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200 p-2 z-50">
-                  <div className="px-2 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    {t.nav.switchRole}
-                  </div>
-                  {(['VIP', 'DRIVER', 'ADMIN'] as Role[]).map((role) => (
-                    <button
-                      key={role}
-                      onClick={() => {
-                        switchRole(role);
-                        setShowRoleMenu(false);
-                        if (role === 'VIP') onSelectTab('vip-home');
-                        if (role === 'DRIVER') onSelectTab('driver-status');
-                        if (role === 'ADMIN') onSelectTab('admin-board');
-                      }}
-                      className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center justify-between transition-colors ${
-                        currentUser?.role === role
-                          ? 'bg-slate-900 text-white font-medium'
-                          : 'text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span>
-                        {role === 'VIP' && t.roles.vip}
-                        {role === 'DRIVER' && t.roles.driver}
-                        {role === 'ADMIN' && t.roles.admin}
-                      </span>
-                      {currentUser?.role === role && (
-                        <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-200">
-                          Active
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                  <div className="my-1 border-t border-slate-100"></div>
+            {/* User Profile & Direct Action Button */}
+            {currentUser ? (
+              <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200">
+                {isDriverView ? (
                   <button
                     onClick={() => {
-                      resetToDefaultData();
-                      setShowRoleMenu(false);
+                      if (onOpenProfile) onOpenProfile();
+                      else onNavigate('/driver/profile');
                     }}
-                    className="w-full text-left px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-1.5"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 text-xs font-semibold transition-all shadow-xs active:scale-95"
+                    title="View Chauffeur Profile"
                   >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reset Demo Data</span>
+                    <User className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Profile</span>
                   </button>
+                ) : null}
+
+                <div className="hidden sm:block text-right pr-1">
+                  <div className="text-[12px] font-semibold text-slate-900 leading-tight">
+                    {currentUser.name}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono tracking-tight font-medium">
+                    {currentUser.role}
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* User Profile / Auth */}
-            {currentUser ? (
-              <button
-                onClick={logout}
-                title={t.nav.logout}
-                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                onClick={onOpenAuth}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                {t.nav.login}
-              </button>
-            )}
+                <button
+                  onClick={() => {
+                    logout();
+                    onNavigate('/');
+                  }}
+                  title="Sign out of system"
+                  className="p-1.5 rounded-full text-slate-500 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : null}
           </div>
-        </div>
-
-        {/* Mobile Nav Zone */}
-        <div className="md:hidden flex items-center overflow-x-auto py-2 border-t border-slate-100 gap-2 scrollbar-none">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => onSelectTab(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap shrink-0 transition-colors ${
-                  isActive
-                    ? 'text-slate-900 bg-slate-100 font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
         </div>
       </div>
     </header>

@@ -9,6 +9,10 @@ export type CleanlinessStatus = 'CLEAN' | 'NEEDS_CLEANING';
 export type TripStatus =
   | 'PENDING'
   | 'ASSIGNED'
+  | 'KEY_COLLECTED'
+  | 'EN_ROUTE_TO_PICKUP'
+  | 'ARRIVED_AT_PICKUP'
+  | 'TRIP_STARTED'
   | 'ACCEPTED'
   | 'GPS_SHARED'
   | 'IN_PROGRESS'
@@ -32,6 +36,7 @@ export interface Vehicle {
   vehicleClass: VehicleClass;
   year: number;
   assignedDriverId: string;
+  priority: number;
 }
 
 export interface Driver {
@@ -72,6 +77,8 @@ export interface TripRequest {
   assignedVehicleModel?: string;
   assignedVehiclePlate?: string;
   assignedVehicleClass?: VehicleClass;
+  assignedPriority?: number;
+  timingType?: 'IMMEDIATE' | 'SCHEDULED';
   
   // GPS Link
   gpsShareUrl?: string;

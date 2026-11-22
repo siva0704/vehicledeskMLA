@@ -19,6 +19,7 @@ import {
   Vehicle,
   VehicleClass,
 } from './types';
+import { api } from './api';
 
 interface StoreContextType {
   currentUser: User | null;
@@ -28,6 +29,8 @@ interface StoreContextType {
   trips: TripRequest[];
   auditLogs: OverrideAuditEntry[];
   language: Language;
+  backendConnected: boolean;
+  refreshState: () => Promise<void>;
   setLanguage: (lang: Language) => void;
   login: (user: User) => void;
   logout: () => void;
@@ -48,6 +51,13 @@ interface StoreContextType {
   updateDriverStatus: (driverId: string, status: DriverStatus) => void;
   updateDriverCleanliness: (driverId: string, cleanliness: CleanlinessStatus) => void;
   driverAcceptTrip: (tripId: string) => void;
+  driverCollectKeys: (tripId: string) => void;
+  driverEnRoute: (
+    tripId: string,
+    gpsUrl?: string,
+    coordinates?: { lat: number; lng: number }
+  ) => void;
+  driverArrivedAtPickup: (tripId: string) => void;
   driverShareGps: (
     tripId: string,
     gpsUrl: string,
@@ -68,17 +78,17 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  USERS: 'vehicle_desk_users_v1',
-  VEHICLES: 'vehicle_desk_vehicles_v1',
-  DRIVERS: 'vehicle_desk_drivers_v1',
-  TRIPS: 'vehicle_desk_trips_v1',
-  AUDIT: 'vehicle_desk_audit_v1',
-  CURRENT_USER: 'vehicle_desk_current_user_v1',
-  LANG: 'vehicle_desk_lang_v1',
+  USERS: 'vehicle_desk_users_v2',
+  VEHICLES: 'vehicle_desk_vehicles_v2',
+  DRIVERS: 'vehicle_desk_drivers_v2',
+  TRIPS: 'vehicle_desk_trips_v2',
+  AUDIT: 'vehicle_desk_audit_v2',
+  CURRENT_USER: 'vehicle_desk_current_user_v2',
+  LANG: 'vehicle_desk_lang_v2',
 };
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [users] = useState<User[]>(() => {
+  const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.USERS);
     return saved ? JSON.parse(saved) : INITIAL_USERS;
   });
@@ -106,14 +116,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
     if (saved) return JSON.parse(saved);
-    // Default to VIP 1 for immediate smooth inspection
-    return INITIAL_USERS[0];
+    return null; // Default to unauthenticated for proper login flow
   });
 
   const [language, setLanguageState] = useState<Language>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.LANG);
     return saved === 'kn' ? 'kn' : 'en';
   });
+
+  const [backendConnected, setBackendConnected] = useState(false);
+
+  // Sync state with backend
+  const refreshState = async () => {
+    try {
+      const state = await api.getState();
+      setUsers(state.users);
+      setVehicles(state.vehicles);
+      setDrivers(state.drivers);
+      setTrips(state.trips);
+      setAuditLogs(state.auditLogs);
+      setBackendConnected(true);
+    } catch (err) {
+      setBackendConnected(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshState();
+    const interval = setInterval(refreshState, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Sync state to LocalStorage
   useEffect(() => {
@@ -160,7 +192,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // 1. VIP creates Trip Request -> Hardcoded Rule Engine evaluates immediately based on VIP seniority
   const createTripRequest = (params: {
     vipId: string;
     vipName: string;
@@ -174,11 +205,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     preferredClass?: VehicleClass;
     notes?: string;
   }) => {
-    // Auto-assign vehicle class based on seniority if not explicitly provided
     const userObj = users.find((u) => u.id === params.vipId) || currentUser;
     const resolvedClass: VehicleClass = params.preferredClass || getClassForSeniority(userObj);
 
-    // Resolve drop location for round trips
     const resolvedDrop = params.isRoundTrip
       ? `Round Trip (Return to ${params.pickupLocation})`
       : params.dropLocation || params.pickupLocation;
@@ -220,12 +249,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updatedAt: nowIso,
       };
 
-      // Mark driver as BUSY on assignment
       setDrivers((prev) =>
         prev.map((d) => (d.id === driver.id ? { ...d, status: 'BUSY' } : d))
       );
     } else {
-      // Queued for admin intervention
       newTrip = {
         id: tripId,
         vipId: params.vipId,
@@ -251,29 +278,68 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return { trip: newTrip, engineResult };
   };
 
-  // 2. Driver Updates Status (Available / Busy / Off / Maintenance)
   const updateDriverStatus = (driverId: string, status: DriverStatus) => {
     setDrivers((prev) =>
       prev.map((d) => (d.id === driverId ? { ...d, status, lastActive: 'Just now' } : d))
     );
+    api.updateDriverStatus(driverId, status).catch(() => {});
   };
 
-  // 3. Driver Updates Cleanliness (Clean / Needs Cleaning)
   const updateDriverCleanliness = (driverId: string, cleanliness: CleanlinessStatus) => {
     setDrivers((prev) =>
       prev.map((d) => (d.id === driverId ? { ...d, cleanliness, lastActive: 'Just now' } : d))
     );
+    api.updateDriverCleanliness(driverId, cleanliness).catch(() => {});
   };
 
-  // 4. Driver Flow: Step 1 - Accept Trip
   const driverAcceptTrip = (tripId: string) => {
     const nowIso = new Date().toISOString();
     setTrips((prev) =>
       prev.map((t) => (t.id === tripId ? { ...t, status: 'ACCEPTED', updatedAt: nowIso } : t))
     );
+    api.driverAcceptTrip(tripId).catch(() => {});
   };
 
-  // 5. Driver Flow: Step 2 - Share GPS Link
+  const driverCollectKeys = (tripId: string) => {
+    const nowIso = new Date().toISOString();
+    setTrips((prev) =>
+      prev.map((t) => (t.id === tripId ? { ...t, status: 'KEY_COLLECTED', updatedAt: nowIso } : t))
+    );
+    api.driverCollectKeys(tripId).catch(() => {});
+  };
+
+  const driverEnRoute = (
+    tripId: string,
+    gpsUrl: string = 'https://maps.google.com/?q=12.9796,77.5908',
+    coordinates: { lat: number; lng: number } = { lat: 12.9796, lng: 77.5908 }
+  ) => {
+    const nowIso = new Date().toISOString();
+    setTrips((prev) =>
+      prev.map((t) =>
+        t.id === tripId
+          ? {
+              ...t,
+              status: 'EN_ROUTE_TO_PICKUP',
+              gpsShareUrl: gpsUrl,
+              gpsCoordinates: coordinates,
+              updatedAt: nowIso,
+            }
+          : t
+      )
+    );
+    api.driverEnRoute(tripId, gpsUrl, coordinates).catch(() => {});
+  };
+
+  const driverArrivedAtPickup = (tripId: string) => {
+    const nowIso = new Date().toISOString();
+    setTrips((prev) =>
+      prev.map((t) =>
+        t.id === tripId ? { ...t, status: 'ARRIVED_AT_PICKUP', updatedAt: nowIso } : t
+      )
+    );
+    api.driverArrivedAtPickup(tripId).catch(() => {});
+  };
+
   const driverShareGps = (
     tripId: string,
     gpsUrl: string,
@@ -293,17 +359,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           : t
       )
     );
+    api.driverShareGps(tripId, gpsUrl, coordinates).catch(() => {});
   };
 
-  // 6. Driver Flow: Step 3 - Start Trip
   const driverStartTrip = (tripId: string) => {
     const nowIso = new Date().toISOString();
     setTrips((prev) =>
       prev.map((t) => (t.id === tripId ? { ...t, status: 'IN_PROGRESS', updatedAt: nowIso } : t))
     );
+    api.driverStartTrip(tripId).catch(() => {});
   };
 
-  // 7. Driver Flow: Step 4 - Complete Trip
   const driverCompleteTrip = (
     tripId: string,
     postTripCleanliness: CleanlinessStatus = 'CLEAN'
@@ -324,7 +390,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       )
     );
 
-    // Free up driver and increment fairness counters
     if (trip?.assignedDriverId) {
       setDrivers((prev) =>
         prev.map((d) => {
@@ -343,9 +408,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         })
       );
     }
+
+    api.driverCompleteTrip(tripId, postTripCleanliness).catch(() => {});
   };
 
-  // 8. Admin Override: Force Assign with Mandatory Reason
   const adminForceAssign = (
     tripId: string,
     driverId: string,
@@ -368,7 +434,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const nowIso = new Date().toISOString();
     const prevDriverId = trip.assignedDriverId;
 
-    // Update trip
     setTrips((prev) =>
       prev.map((t) => {
         if (t.id === tripId) {
@@ -394,19 +459,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       })
     );
 
-    // Free old driver if there was one
     if (prevDriverId && prevDriverId !== driver.id) {
       setDrivers((prev) =>
         prev.map((d) => (d.id === prevDriverId ? { ...d, status: 'AVAILABLE' } : d))
       );
     }
 
-    // Set new driver to BUSY
     setDrivers((prev) =>
       prev.map((d) => (d.id === driver.id ? { ...d, status: 'BUSY' } : d))
     );
 
-    // Immutable Audit Entry
     const auditEntry: OverrideAuditEntry = {
       id: `AUDIT-${Math.floor(100 + Math.random() * 900)}`,
       tripId: trip.id,
@@ -420,6 +482,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setAuditLogs((prev) => [auditEntry, ...prev]);
+
+    api.adminOverride({ tripId, driverId, reason, adminName }).catch(() => {});
     return true;
   };
 
@@ -436,6 +500,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         prev.map((d) => (d.id === trip.assignedDriverId ? { ...d, status: 'AVAILABLE' } : d))
       );
     }
+
+    api.cancelTrip(tripId).catch(() => {});
   };
 
   const resetToDefaultData = () => {
@@ -443,8 +509,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setDrivers(INITIAL_DRIVERS);
     setTrips(INITIAL_TRIPS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
-    setCurrentUser(INITIAL_USERS[0]);
+    setCurrentUser(null);
     localStorage.clear();
+    api.reset().catch(() => {});
   };
 
   return (
@@ -457,6 +524,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         trips,
         auditLogs,
         language,
+        backendConnected,
+        refreshState,
         setLanguage,
         login,
         logout,
@@ -465,6 +534,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateDriverStatus,
         updateDriverCleanliness,
         driverAcceptTrip,
+        driverCollectKeys,
+        driverEnRoute,
+        driverArrivedAtPickup,
         driverShareGps,
         driverStartTrip,
         driverCompleteTrip,

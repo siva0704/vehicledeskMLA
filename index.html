@@ -2,13 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vehicle Desk – VIP Fleet & Allocation System</title>
-    <meta name="description" content="Phase 1 Web App for VIP vehicle requests, driver status management, hardcoded rule engine allocation, live GPS sharing, and admin overrides with English & Kannada bilingual support." />
-    <meta property="og:title" content="Vehicle Desk – VIP Fleet & Allocation System" />
-    <meta property="og:description" content="Phase 1 Web App for VIP vehicle requests, driver status management, hardcoded rule engine allocation, live GPS sharing, and admin overrides with English & Kannada bilingual support." />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Karnataka State Protocol — Chauffeur Cockpit & Fleet Desk</title>
+    <meta name="description" content="Karnataka State Protocol VIP fleet priority queue dispatch and dedicated Chauffeur Cockpit PWA. Department of Personnel and Administrative Reforms (DPAR), Government of Karnataka." />
+    
+    <!-- PWA Web App Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0f172a" />
+    
+    <!-- Apple iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Chauffeur" />
+    <link rel="apple-touch-icon" href="/assets/logo.png" />
+    <link rel="icon" type="image/svg+xml" href="/assets/vehicle-desk-emblem.svg" />
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Kannada:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,6 +24,20 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(
+            (reg) => {
+              console.log('[PWA] ServiceWorker registration successful with scope: ', reg.scope);
+            },
+            (err) => {
+              console.log('[PWA] ServiceWorker registration failed: ', err);
+            }
+          );
+        });
+      }
+    </script>
   </body>
 </html>
-

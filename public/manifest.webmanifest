@@ -1,0 +1,32 @@
+{
+  "name": "Karnataka State Protocol — Chauffeur Cockpit",
+  "short_name": "Chauffeur",
+  "description": "Official Chauffeur Cockpit for Karnataka State Protocol & VIP Vehicle Dispatch, DPAR Government of Karnataka.",
+  "start_url": "/#/driver/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "categories": ["government", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/vehicle-desk-emblem.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    }
+  ]
+}
