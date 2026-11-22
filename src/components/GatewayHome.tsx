@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store';
 import { translations } from '../translations';
+import { WA_DESK_URL, isProdHost } from '../api';
 
 interface GatewayHomeProps {
   onNavigate: (route: string) => void;
@@ -50,17 +51,17 @@ export const GatewayHome: React.FC<GatewayHomeProps> = ({ onNavigate }) => {
                 backendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'
               }`}
             />
-            <span>Priority Queue Engine: <strong className="font-semibold text-slate-900">{backendConnected ? 'Live on Port 4000' : 'Local Standby'}</strong></span>
+            <span>Priority Queue Engine: <strong className="font-semibold text-slate-900">{backendConnected ? (isProdHost ? 'Live on Cloud Engine' : 'Live on Port 4000') : 'Local Standby'}</strong></span>
           </div>
 
           <a
-            href="http://localhost:3005"
+            href={WA_DESK_URL}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/70 hover:bg-emerald-100/70 font-semibold transition-all active:scale-95 shadow-2xs"
           >
             <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-            <span>WA-Sim Protocol Emulator (3005)</span>
+            <span>WA-Sim Protocol Emulator {isProdHost ? '(Cloud)' : '(3005)'}</span>
             <ExternalLink className="w-3 h-3 text-emerald-600/70" />
           </a>
         </div>
@@ -186,7 +187,7 @@ export const GatewayHome: React.FC<GatewayHomeProps> = ({ onNavigate }) => {
 
           <div className="pt-6 space-y-2 relative z-10">
             <a
-              href="http://localhost:3005"
+              href={WA_DESK_URL}
               target="_blank"
               rel="noreferrer"
               className="w-full py-2.5 px-4 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-full text-xs font-bold transition-all active:scale-98 flex items-center justify-center gap-2 shadow-md"
@@ -195,7 +196,7 @@ export const GatewayHome: React.FC<GatewayHomeProps> = ({ onNavigate }) => {
               <ExternalLink className="w-4 h-4" />
             </a>
             <p className="text-[10.5px] text-center text-slate-400 font-medium">
-              WA-Sim running at localhost:3005 with verified MLAs
+              {isProdHost ? 'Cloud WA-Sim with verified MLAs' : 'WA-Sim running at localhost:3005 with verified MLAs'}
             </p>
           </div>
         </div>

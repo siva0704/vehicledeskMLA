@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
+import { WA_DESK_URL } from '../api';
 import { translations } from '../translations';
 import { TripRequest, VehicleClass } from '../types';
 import {
@@ -475,7 +476,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             </p>
                           </div>
                           <a
-                            href="http://localhost:3005"
+                            href={WA_DESK_URL}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 transition-all active:scale-95 shadow-2xs"

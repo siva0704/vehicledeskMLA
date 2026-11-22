@@ -1,6 +1,15 @@
 import { CleanlinessStatus, Driver, DriverStatus, OverrideAuditEntry, TripRequest, User, Vehicle } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const isBrowser = typeof window !== 'undefined';
+export const isProdHost = isBrowser && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (isProdHost ? '/api' : 'http://localhost:4000/api');
+
+export const WA_DESK_URL =
+  import.meta.env.VITE_WA_DESK_URL ||
+  (isProdHost ? 'https://whatsapp-zeta-puce.vercel.app' : 'http://localhost:3005');
 
 export const api = {
   async getState(): Promise<{
