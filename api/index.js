@@ -361,8 +361,12 @@ var VehicleDeskStore = class {
 
 // server/whatsappService.ts
 var WhatsAppService = class {
-  constructor(baseUrl = process.env.WA_SIM_URL || "http://localhost:3005", apiKey = process.env.WA_SIM_API_KEY || "wa-sim-local-dev-token", phoneNumberId = process.env.WA_SIM_PHONE_ID || "wa-sim-phone-001") {
-    this.baseUrl = baseUrl.replace(/\/+$/, "");
+  constructor(baseUrl, apiKey = process.env.WA_SIM_API_KEY || "wa-sim-local-dev-token", phoneNumberId = process.env.WA_SIM_PHONE_ID || "wa-sim-phone-001") {
+    const isServerless = Boolean(
+      process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NOW_REGION
+    );
+    const resolvedUrl = baseUrl || process.env.WA_SIM_URL || (isServerless ? "https://whatsapp-zeta-puce.vercel.app" : "http://localhost:3005");
+    this.baseUrl = resolvedUrl.replace(/\/+$/, "");
     this.apiKey = apiKey;
     this.phoneNumberId = phoneNumberId;
   }
@@ -1379,7 +1383,7 @@ app.use((req, res, next) => {
 var store = new VehicleDeskStore();
 var waService = new WhatsAppService();
 var botEngine = new BotEngine(store, waService);
-app.get("/health", (_req, res) => {
+app.get(["/health", "/api/health"], (_req, res) => {
   res.json({
     status: "ok",
     service: "vehicledesk-mla-backend",
@@ -1390,12 +1394,13 @@ app.get("/health", (_req, res) => {
 });
 app.get("/api/whatsapp/status", async (_req, res) => {
   try {
-    const waUrl = process.env.WA_SIM_URL || "http://localhost:3005";
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NOW_REGION);
+    const waUrl = process.env.WA_SIM_URL || (isServerless ? "https://whatsapp-zeta-puce.vercel.app" : "http://localhost:3005");
     const waRes = await fetch(`${waUrl}/health`);
     const data = await waRes.json();
     res.json({ connected: true, emulator: data });
   } catch (err) {
-    res.json({ connected: false, error: "Could not connect to WhatsApp emulator on port 3005" });
+    res.json({ connected: false, error: "Could not connect to WhatsApp emulator" });
   }
 });
 app.post("/api/whatsapp/webhook", async (req, res) => {

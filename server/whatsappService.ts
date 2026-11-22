@@ -22,11 +22,21 @@ export class WhatsAppService {
   private phoneNumberId: string;
 
   constructor(
-    baseUrl = process.env.WA_SIM_URL || 'http://localhost:3005',
+    baseUrl?: string,
     apiKey = process.env.WA_SIM_API_KEY || 'wa-sim-local-dev-token',
     phoneNumberId = process.env.WA_SIM_PHONE_ID || 'wa-sim-phone-001'
   ) {
-    this.baseUrl = baseUrl.replace(/\/+$/, '');
+    const isServerless = Boolean(
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.NOW_REGION
+    );
+    const resolvedUrl =
+      baseUrl ||
+      process.env.WA_SIM_URL ||
+      (isServerless ? 'https://whatsapp-zeta-puce.vercel.app' : 'http://localhost:3005');
+
+    this.baseUrl = resolvedUrl.replace(/\/+$/, '');
     this.apiKey = apiKey;
     this.phoneNumberId = phoneNumberId;
   }

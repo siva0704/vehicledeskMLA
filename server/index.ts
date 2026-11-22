@@ -29,7 +29,7 @@ const waService = new WhatsAppService();
 const botEngine = new BotEngine(store, waService);
 
 // Health check
-app.get('/health', (_req, res) => {
+app.get(['/health', '/api/health'], (_req, res) => {
   res.json({
     status: 'ok',
     service: 'vehicledesk-mla-backend',
@@ -42,12 +42,13 @@ app.get('/health', (_req, res) => {
 // WhatsApp connectivity check
 app.get('/api/whatsapp/status', async (_req, res) => {
   try {
-    const waUrl = process.env.WA_SIM_URL || 'http://localhost:3005';
+    const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NOW_REGION);
+    const waUrl = process.env.WA_SIM_URL || (isServerless ? 'https://whatsapp-zeta-puce.vercel.app' : 'http://localhost:3005');
     const waRes = await fetch(`${waUrl}/health`);
     const data = await waRes.json();
     res.json({ connected: true, emulator: data });
   } catch (err) {
-    res.json({ connected: false, error: 'Could not connect to WhatsApp emulator on port 3005' });
+    res.json({ connected: false, error: 'Could not connect to WhatsApp emulator' });
   }
 });
 
