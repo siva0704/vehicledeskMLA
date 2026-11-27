@@ -124,8 +124,8 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
 
   return (
     <div className="space-y-6 pb-24 md:pb-8">
-      {/* PWA Mobile Installation Banner */}
-      <PwaInstallBanner />
+      {/* PWA Mobile Installation Banner (hidden on chauffeur profile to prevent duplicate CTA) */}
+      {activeSubTab !== 'driver-profile' && <PwaInstallBanner />}
 
       {/* Top Apple Segmented Control Island */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 backdrop-blur-md p-3 sm:p-3.5 rounded-3xl border border-black/[0.06] shadow-xs">

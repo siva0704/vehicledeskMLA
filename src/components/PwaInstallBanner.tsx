@@ -22,7 +22,20 @@ export const PwaInstallBanner: React.FC = () => {
   const [isStandalone, setIsStandalone] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'ios' | 'android' | 'desktop'>('android');
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('chauffeur_pwa_banner_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      localStorage.setItem('chauffeur_pwa_banner_dismissed', 'true');
+    } catch {}
+  };
 
   useEffect(() => {
     // Check if running in standalone mode (already installed PWA)
@@ -107,7 +120,7 @@ export const PwaInstallBanner: React.FC = () => {
             <span>Install App</span>
           </button>
           <button
-            onClick={() => setDismissed(true)}
+            onClick={handleDismiss}
             className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
             title="Dismiss banner"
           >

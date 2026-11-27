@@ -7,7 +7,7 @@
     "dev": "vite --port=5173 --host=0.0.0.0",
     "server": "tsx server/index.ts",
     "test": "tsx --test server/tests/server.test.ts",
-    "build": "vite build",
+    "build": "vite build && npm run bundle:api",
     "bundle:api": "npx esbuild server/api.ts --bundle --platform=node --format=esm --target=node20 --packages=external --outfile=api/index.js",
     "preview": "vite preview",
     "clean": "rm -rf dist",

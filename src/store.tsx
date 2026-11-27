@@ -105,12 +105,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [trips, setTrips] = useState<TripRequest[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.TRIPS);
-    return saved ? JSON.parse(saved) : INITIAL_TRIPS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return INITIAL_TRIPS;
   });
 
   const [auditLogs, setAuditLogs] = useState<OverrideAuditEntry[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.AUDIT);
-    return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return INITIAL_AUDIT_LOGS;
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -137,22 +149,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (Array.isArray(state?.trips)) {
         setTrips((prevTrips) => {
-          if (state.trips.length > 0) {
-            const tripMap = new Map<string, TripRequest>();
-            // Keep client trips
-            prevTrips.forEach((t) => tripMap.set(t.id, t));
-            // Server updates take precedence
-            state.trips.forEach((t) => tripMap.set(t.id, t));
-            const merged = Array.from(tripMap.values()).sort(
-              (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-            );
-            return merged;
-          } else if (prevTrips.length > 0) {
-            // Serverless cold start returned empty trips - re-hydrate the server container
-            api.syncState({ trips: prevTrips }).catch(() => {});
-            return prevTrips;
+          const tripMap = new Map<string, TripRequest>();
+          // Base verified trips
+          INITIAL_TRIPS.forEach((t) => tripMap.set(t.id, t));
+          // Client stored trips
+          (prevTrips || []).forEach((t) => tripMap.set(t.id, t));
+          // Server updates
+          state.trips.forEach((t) => tripMap.set(t.id, t));
+
+          const merged = Array.from(tripMap.values()).sort(
+            (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
+
+          if (state.trips.length === 0 && merged.length > 0) {
+            api.syncState({ trips: merged }).catch(() => {});
           }
-          return prevTrips;
+
+          return merged;
         });
       }
       setBackendConnected(true);

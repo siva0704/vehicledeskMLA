@@ -487,7 +487,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               No Active Dispatches in Queue
                             </h4>
                             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                              Waiting for Hon'ble MLAs to book rides via WhatsApp. Incoming requests will automatically trigger priority queue auto-dispatch.
+                              All active requests have been fulfilled. New dispatches from Hon'ble MLAs arrive 24/7 via the verified Government WhatsApp Protocol Desk.
                             </p>
                           </div>
                           <a
@@ -496,7 +496,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 transition-all active:scale-95 shadow-2xs"
                           >
-                            <span>Open WhatsApp Emulator & Book</span>
+                            <span>Official WhatsApp Protocol Desk</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         </div>

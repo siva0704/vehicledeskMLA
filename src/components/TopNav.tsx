@@ -124,19 +124,9 @@ export const TopNav: React.FC<TopNavProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="apple-segmented-track">
-                <button
-                  onClick={() => onNavigate('/admin/login')}
-                  className="apple-segmented-pill hover:text-slate-900"
-                >
-                  Admin Portal
-                </button>
-                <button
-                  onClick={() => onNavigate('/driver/login')}
-                  className="apple-segmented-pill hover:text-slate-900"
-                >
-                  Chauffeur Cockpit
-                </button>
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200/80 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-blue-600" />
+                <span>DPAR Protocol Wing · Official Sign-In</span>
               </div>
             )}
           </nav>
