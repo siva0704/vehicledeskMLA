@@ -123,60 +123,23 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
   const currentStep = assignedTrip ? getStepIndex(assignedTrip.status) : 0;
 
   return (
-    <div className="space-y-6 pb-24 md:pb-8">
+    <div className="space-y-6 pb-28 sm:pb-32">
       {/* PWA Mobile Installation Banner (hidden on chauffeur profile to prevent duplicate CTA) */}
       {activeSubTab !== 'driver-profile' && <PwaInstallBanner />}
 
-      {/* Top Apple Segmented Control Island */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70 backdrop-blur-md p-3 sm:p-3.5 rounded-3xl border border-black/[0.06] shadow-xs">
-        <div className="apple-segmented-track p-1 inline-flex w-fit">
-          <button
-            onClick={() => onChangeSubTab('driver-status')}
-            className={`apple-segmented-pill flex items-center gap-2 ${
-              activeSubTab === 'driver-status' ? 'active' : ''
-            }`}
-          >
-            <Gauge className="w-3.5 h-3.5" />
-            <span>Duty Readiness</span>
-          </button>
-          <button
-            onClick={() => onChangeSubTab('driver-trip')}
-            className={`apple-segmented-pill flex items-center gap-2 relative ${
-              activeSubTab === 'driver-trip' ? 'active' : ''
-            }`}
-          >
-            <Car className="w-3.5 h-3.5" />
-            <span>Today&apos;s Tour</span>
-            {assignedTrip && (
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => onChangeSubTab('driver-profile')}
-            className={`apple-segmented-pill flex items-center gap-2 ${
-              activeSubTab === 'driver-profile' ? 'active' : ''
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Chauffeur Pass</span>
-          </button>
-        </div>
-
-        {/* Chauffeur Vehicle & Duty Indicator Badge */}
-        <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-900/[0.04] border border-black/[0.06] text-xs self-start sm:self-auto">
-          <div className={`w-2 h-2 rounded-full ${isEligible ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
-          <span className="font-semibold text-slate-800">{myDriver?.name}</span>
-          <span className="text-slate-300">|</span>
-          <span className="font-mono-nums text-slate-600 font-medium">
+      {/* Chauffeur Vehicle & Duty Status Header Bar */}
+      <div className="flex items-center justify-between gap-3 bg-white/80 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-black/[0.06] shadow-xs">
+        <div className="flex items-center gap-2.5 text-xs">
+          <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isEligible ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+          <span className="font-bold text-slate-900 text-sm truncate">{myDriver?.name}</span>
+          <span className="text-slate-300">·</span>
+          <span className="font-mono text-slate-700 font-medium truncate">
             {myVehicle?.model} ({myVehicle?.plate})
           </span>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900 text-amber-300">
-            {myVehicle?.assignedPriority ? `P${myVehicle.assignedPriority}` : 'Pool'}
-          </span>
         </div>
+        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-amber-300 shrink-0 font-mono">
+          {myVehicle?.assignedPriority ? `Priority ${myVehicle.assignedPriority}` : 'Pool Squadron'}
+        </span>
       </div>
 
       {/* SCREEN 1: OPERATIONAL READINESS & STATUS */}
@@ -802,46 +765,46 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({
         />
       )}
 
-      {/* Apple Floating Glass Tab Bar (Mobile / PWA Bottom Bar) */}
-      <div className="fixed bottom-3 inset-x-0 z-40 px-4 md:hidden flex justify-center pointer-events-none">
-        <nav className="apple-glass-island rounded-full p-1.5 shadow-[0_12px_40px_rgb(0,0,0,0.18)] border border-slate-200/80 bg-white/95 backdrop-blur-xl flex items-center gap-1 pointer-events-auto max-w-sm w-full justify-between">
+      {/* Apple Floating Glass Tab Bar (Primary Driver Navigation) */}
+      <div className="fixed bottom-3 sm:bottom-4 inset-x-0 z-40 px-4 flex justify-center pointer-events-none">
+        <nav className="apple-glass-island rounded-full p-1.5 shadow-[0_16px_45px_rgb(0,0,0,0.2)] border border-slate-200/90 bg-white/95 backdrop-blur-xl flex items-center gap-1.5 pointer-events-auto max-w-md w-full justify-between">
           <button
             onClick={() => onChangeSubTab('driver-status')}
-            className={`flex-1 py-2 px-3 rounded-full text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all ${
+            className={`flex-1 py-2.5 px-3 rounded-full text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${
               activeSubTab === 'driver-status'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Gauge className="w-4 h-4" />
-            <span className="text-[10px] tracking-tight">Readiness</span>
+            <span className="text-[11px] tracking-tight">Readiness</span>
           </button>
 
           <button
             onClick={() => onChangeSubTab('driver-trip')}
-            className={`relative flex-1 py-2 px-3 rounded-full text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all ${
+            className={`relative flex-1 py-2.5 px-3 rounded-full text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${
               activeSubTab === 'driver-trip'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Car className="w-4 h-4" />
-            <span className="text-[10px] tracking-tight">Live Tour</span>
+            <span className="text-[11px] tracking-tight">Today&apos;s Tour</span>
             {assignedTrip && (
-              <span className="absolute top-1.5 right-6 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="absolute top-2 right-6 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             )}
           </button>
 
           <button
             onClick={() => onChangeSubTab('driver-profile')}
-            className={`flex-1 py-2 px-3 rounded-full text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all ${
+            className={`flex-1 py-2.5 px-3 rounded-full text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all ${
               activeSubTab === 'driver-profile'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <User className="w-4 h-4" />
-            <span className="text-[10px] tracking-tight">Pass / Profile</span>
+            <span className="text-[11px] tracking-tight">Chauffeur Pass</span>
           </button>
         </nav>
       </div>
